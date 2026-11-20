@@ -4,14 +4,18 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
 
 > Not affiliated with Flipper Devices. "Flipper Zero" is their trademark.
 
-## What it does (v0.1)
+## What it does (v0.2)
 
 - **Connect:** scan, pair and connect over Bluetooth. Already-paired Flippers show up right away.
 - **Device info:** name, firmware (official, Momentum, ...), hardware, battery, SD and internal storage.
-- **File manager:** browse, upload from the phone, save to the phone (`Documents/0ilrig`), rename, delete, make folders, select many files at once.
-- **Text editor:** edit `.txt`, `.ir`, `.sub`, `.nfc`, `.rfid`, Bad USB scripts and more, then save them straight back to the Flipper.
-- **Run / open on Flipper:** start `.fap` apps, or open `.sub`, `.nfc`, `.ir`, `.rfid`, `.ibtn` and Bad USB files in their Flipper app.
-- **Remote:** live Flipper screen with the D-pad, OK and Back buttons. Tap for a press, hold for a long press. Also has quick buttons to launch the built-in apps.
+- **Tools tab:**
+  - **File manager:** browse, upload from the phone, save to the phone (`Documents/0ilrig`), rename, delete, make folders, select many files at once, and edit text files.
+  - **Bad USB:** write, edit and run scripts (`/ext/badusb`). Works with both "Bad USB" (official) and "Bad KB" (Momentum).
+  - **JS scripts:** write, edit and run Flipper JavaScript (`/ext/apps/Scripts`) with JS Runner.
+  - **Signal folders:** Sub-GHz, NFC, RFID, Infrared, iButton and apps, each opening the file manager in its own folder.
+- **Remote:** live Flipper screen in an orange frame, with the D-pad, OK and Back buttons. Tap for a press, hold for a long press. Pressed buttons appear in a queue and are sent in order.
+- **Quick launch:** you pick which apps appear (built-in apps, installed `.fap` apps, or any name).
+- **Phone back button:** steps back through sheets, the editor, folders, tools and tabs, and only leaves the app at the end.
 
 ## Get the app
 
@@ -39,7 +43,7 @@ Without a signing key, builds are debug-signed with a random key, so you may nee
 
 ```
 src/flipper/   protocol: ble.js (transport), rpc.js, framing.js, api.js, screen.js, demo.js (pretend Flipper)
-src/ui/        screens: device, files, editor, remote
+src/ui/        screens: device, tools (files, script tools), editor, remote
 test/          node tests against the pretend Flipper
 ```
 

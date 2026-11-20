@@ -1,8 +1,14 @@
 // Friendly Flipper commands built on the RPC layer.
-import { FlipperRpc } from './rpc.js';
+import { FlipperRpc, RpcError } from './rpc.js';
 import { FileType, InputKey, InputType } from './proto.js';
 
 export const MAX_FILE_CHUNK = 512; // same chunk size the official app uses
+
+// Same app, different names depending on the firmware.
+const APP_ALIASES = {
+  'Bad USB': ['Bad USB', 'Bad KB'],
+  'Bad KB': ['Bad KB', 'Bad USB'],
+};
 
 export class Flipper {
   constructor(transport) {
@@ -84,9 +90,23 @@ export class Flipper {
     await this.rpc.request({ storage_rename_request: { old_path: oldPath, new_path: newPath } });
   }
 
-  /** Starts a Flipper app, e.g. startApp('Infrared') or a .fap path. */
+  /**
+   * Starts a Flipper app, e.g. startApp('Infrared') or a .fap path.
+   * Tries known alternative names (Momentum calls Bad USB "Bad KB").
+   */
   async startApp(name, args = '') {
-    await this.rpc.request({ app_start_request: { name, args } });
+    const names = APP_ALIASES[name] ?? [name];
+    let lastError;
+    for (const n of names) {
+      try {
+        await this.rpc.request({ app_start_request: { name: n, args } });
+        return n;
+      } catch (e) {
+        lastError = e;
+        if (!(e instanceof RpcError) || e.statusName === 'ERROR_APP_SYSTEM_LOCKED') throw e;
+      }
+    }
+    throw lastError;
   }
 
   async startScreenStream() {

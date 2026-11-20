@@ -5,9 +5,23 @@ import { FrameDecoder } from './framing.js';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
+// Plain-language versions of the most common Flipper errors.
+const FRIENDLY = {
+  ERROR_APP_SYSTEM_LOCKED: 'Another app is open on the Flipper. Close it first (press Back on the Flipper).',
+  ERROR_APP_CANT_START: "The Flipper couldn't start that app.",
+  ERROR_STORAGE_NOT_EXIST: "That file or folder doesn't exist.",
+  ERROR_STORAGE_EXIST: 'Something with that name already exists.',
+  ERROR_STORAGE_NOT_READY: 'The SD card is not ready. Is it inserted?',
+  ERROR_STORAGE_DENIED: 'The Flipper denied access to that file.',
+  ERROR_STORAGE_INVALID_NAME: 'That name is not allowed on the Flipper.',
+  ERROR_STORAGE_DIR_NOT_EMPTY: 'That folder is not empty.',
+  ERROR_BUSY: 'The Flipper is busy. Try again in a moment.',
+};
+
 export class RpcError extends Error {
   constructor(status) {
-    super(`Flipper replied ${commandStatusName(status)}`);
+    const name = commandStatusName(status);
+    super(FRIENDLY[name] ?? `Flipper replied ${name}`);
     this.status = status;
     this.statusName = commandStatusName(status);
   }

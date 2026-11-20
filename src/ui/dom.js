@@ -17,12 +17,31 @@ export function h(tag, props = {}, ...children) {
   return el;
 }
 
+// Things the phone's back button should close first (sheets, editor), newest last.
+const backStack = [];
+/** Register a back-button handler. Returns a function that removes it. */
+export function pushBack(fn) {
+  backStack.push(fn);
+  return () => {
+    const i = backStack.lastIndexOf(fn);
+    if (i >= 0) backStack.splice(i, 1);
+  };
+}
+/** Runs the newest back handler. Returns false if there was none. */
+export function popBack() {
+  const fn = backStack.pop();
+  if (!fn) return false;
+  fn();
+  return true;
+}
+
 let toastTimer;
 export function toast(message, { error = false, ms = 3500 } = {}) {
   const el = document.getElementById('toast');
   el.textContent = message;
   el.className = error ? 'toast error' : 'toast';
   el.hidden = false;
+  el.onclick = () => (el.hidden = true); // tap to dismiss
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (el.hidden = true), ms);
 }
@@ -37,9 +56,11 @@ export function sheet(title, buttons, extra) {
   return new Promise((resolve) => {
     const root = document.getElementById('modal-root');
     const close = (v) => {
+      removeBack();
       overlay.remove();
       resolve(v);
     };
+    const removeBack = pushBack(() => close(null));
     const overlay = h(
       'div',
       { class: 'overlay', onclick: (e) => e.target === overlay && close(null) },

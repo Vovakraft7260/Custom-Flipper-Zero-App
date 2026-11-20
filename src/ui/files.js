@@ -1,4 +1,5 @@
-// Files tab: browse the Flipper's storage, upload, download, rename, delete, edit.
+// File manager tool: browse the Flipper's storage, upload, download, rename, delete, edit.
+// Also used by the signal-folder tools (Sub-GHz, NFC, ...), each starting in its own folder.
 import { h, toast, showError, sheet, ask, confirmAction, formatBytes } from './dom.js';
 import { conn } from '../connection.js';
 import { joinPath, parentPath } from '../flipper/api.js';
@@ -14,24 +15,47 @@ const OPEN_WITH = {
   ibtn: 'iButton',
 };
 
-const state = { path: '/ext', entries: null, selecting: false, selected: new Set(), busy: '' };
+let state = newState('/ext');
+let currentDraw = null;
 
-export function filesView(rerender) {
-  if (conn.state !== 'online') {
-    return h('div', {}, h('h2', {}, 'files'), h('p', { class: 'muted' }, 'Connect your Flipper on the device tab first.'));
-  }
+function newState(home) {
+  return { home, path: home, history: [], entries: null, selecting: false, selected: new Set(), busy: '' };
+}
+
+/** Opens the browser in `home` (a fresh start each time a tool is opened). */
+export function openFiles(home) {
+  state = newState(home);
+}
+
+export function filesView() {
   const root = h('div');
   const draw = () => root.replaceChildren(render(draw));
+  currentDraw = draw;
   if (state.entries === null) load(draw);
   draw();
   return root;
 }
 
-async function load(draw, path = state.path) {
+/** Phone back button: leave select mode, then go back through visited folders. */
+export function filesBack() {
+  if (state.selecting) {
+    state.selecting = false;
+    state.selected.clear();
+    currentDraw?.();
+    return true;
+  }
+  const prev = state.history.pop();
+  if (prev === undefined) return false;
+  load(currentDraw, prev, false);
+  return true;
+}
+
+async function load(draw, path = state.path, remember = true) {
   state.busy = 'loading…';
   draw();
   try {
     state.entries = await conn.flipper.list(path);
+    if (remember && path !== state.path) state.history.push(state.path);
     state.path = path;
     state.selected.clear();
   } catch (e) {
@@ -266,7 +290,5 @@ function upload(draw) {
 
 /** Forget the listing when the connection changes. */
 export function resetFiles() {
-  state.entries = null;
-  state.selecting = false;
-  state.selected.clear();
+  state = newState(state.home);
 }

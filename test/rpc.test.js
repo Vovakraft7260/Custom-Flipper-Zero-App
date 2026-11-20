@@ -82,3 +82,23 @@ test('screen frames without a pending request go to listeners', async () => {
   assert.equal(frames.length, 1);
   assert.equal(frames[0].data.length, 1024);
 });
+
+test('startApp falls back to Momentum app names (Bad USB -> Bad KB)', async () => {
+  const fake = new FakeFlipper();
+  const orig = fake.handle.bind(fake);
+  fake.handle = (m) => {
+    if (m.content === 'app_start_request' && m.app_start_request.name === 'Bad USB') {
+      fake.received.push(m);
+      return fake.reply({ command_id: m.command_id, command_status: 15, empty: {} });
+    }
+    orig(m);
+  };
+  const used = await new Flipper(fake).startApp('Bad USB', '/ext/badusb/a.txt');
+  assert.equal(used, 'Bad KB');
+});
+
+test('startApp does not retry when another app is open', async () => {
+  const fake = new FakeFlipper();
+  fake.handle = (m) => fake.reply({ command_id: m.command_id, command_status: 17, empty: {} });
+  await assert.rejects(new Flipper(fake).startApp('Bad USB'), /Another app is open/);
+});
