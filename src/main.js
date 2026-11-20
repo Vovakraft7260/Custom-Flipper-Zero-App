@@ -7,6 +7,7 @@ import { deviceView } from './ui/device.js';
 import { toolsView, toolsBack, resetTools, setOnRunScript } from './ui/tools.js';
 import { resetFiles } from './ui/files.js';
 import { remoteView, stopRemote } from './ui/remote.js';
+import { checkOnStart } from './ui/updates.js';
 
 const views = { device: deviceView, tools: toolsView, remote: remoteView };
 let current = 'device';
@@ -78,3 +79,4 @@ onConnChange((c) => {
 });
 
 render();
+checkOnStart();

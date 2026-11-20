@@ -32,11 +32,17 @@ Every push builds an APK in GitHub Actions:
 2. Download **0ilrig-trmnl-apk** under *Artifacts* (it's a zip with the APK inside).
 3. Open the APK on your phone and allow "install unknown apps" when Android asks.
 
-Pushing a tag like `v0.1.0` also publishes the APK on the **Releases** page.
+Once the signing key is set up (below), every change on `main` also publishes the APK on the **Releases** page, so you can grab it there without unzipping.
 
-### Updates that install over the old version
+### Updates
 
-Without a signing key, builds are debug-signed with a random key, so you may need to uninstall before installing a newer build. To fix that, add these repository secrets: `OILRIG_KEYSTORE_BASE64`, `OILRIG_KEYSTORE_PASSWORD`, `OILRIG_KEY_ALIAS` and `OILRIG_KEY_PASSWORD`. From then on, builds are signed with your own key.
+The app checks the Releases page when it opens (and from **check for updates** on the connect screen). If there's a newer build it asks you; tap **download & install**, then open the downloaded file and choose *Update*. No internet? It just skips the check.
+
+Want it fully hands-off? Add this repo to [Obtainium](https://github.com/ImranR98/Obtainium); it watches Releases and updates the app for you.
+
+### Signing key (needed for updates)
+
+Without a signing key, builds are debug-signed with a random key, so you may need to uninstall before installing a newer build. To fix that, add these repository secrets: `OILRIG_KEYSTORE_BASE64`, `OILRIG_KEYSTORE_PASSWORD`, `OILRIG_KEY_ALIAS` and `OILRIG_KEY_PASSWORD`. From then on, builds are signed with your own key and published as releases. Switching from a debug build to the first signed build needs one uninstall.
 
 ## Troubleshooting
 

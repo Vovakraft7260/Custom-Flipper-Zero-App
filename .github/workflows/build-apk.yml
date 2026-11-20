@@ -1,6 +1,8 @@
 # Builds the Android app (APK) in the cloud on every push and pull request.
-# Download it from the run's "Artifacts" section. Pushing a tag like v0.1.0
-# also publishes the APK on the repo's Releases page.
+# Download it from the run's "Artifacts" section.
+# Every push to main (when the signing key secrets are set) also publishes a
+# release "build-N" with the APK. The app checks that release to offer updates.
+# Pushing a tag like v1.0.0 publishes a named release the same way.
 name: Build APK
 
 on:
@@ -11,14 +13,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # needed to publish releases for tags
+  contents: write # needed to publish releases
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       APP_VERSION_CODE: ${{ github.run_number }}
-      APP_VERSION_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('0.1.0-build.{0}', github.run_number) }}
+      APP_VERSION_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('0.6.{0}', github.run_number) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -78,8 +80,19 @@ jobs:
           path: 0ilrig-trmnl-*.apk
           if-no-files-found: error
 
-      - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish release (main branch or version tag)
+        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" 0ilrig-trmnl-*.apk --title "0ilrig Trmnl $GITHUB_REF_NAME" --generate-notes
+          SIGNED: ${{ steps.signing.outputs.signed }}
+        run: |
+          if [ "$SIGNED" != "true" ]; then
+            echo "::warning::Not publishing: APK is debug-signed. Add the OILRIG_* signing secrets so updates install over the old app."
+            exit 0
+          fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then TAG="$GITHUB_REF_NAME"; else TAG="build-$GITHUB_RUN_NUMBER"; fi
+          NOTES="build $GITHUB_RUN_NUMBER
+
+          $(git log -1 --pretty=%B)"
+          gh release create "$TAG" 0ilrig-trmnl-*.apk --target "$GITHUB_SHA" \
+            --title "0ilrig Trmnl $APP_VERSION_NAME" --notes "$NOTES" --latest

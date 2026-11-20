@@ -2,6 +2,7 @@
 import { h, showError, formatBytes } from './dom.js';
 import { Capacitor } from '@capacitor/core';
 import { conn, connectTo, connectDemo, disconnect, lastDevice } from '../connection.js';
+import { updatesCard } from './updates.js';
 import { startScan, stopScan, bondedFlippers } from '../flipper/ble.js';
 
 const REPAIR_TIP =
@@ -99,6 +100,7 @@ function scanView(rerender) {
     conn.lastError && h('div', { class: 'tip' }, `${conn.lastError}. ${REPAIR_TIP}`),
     !Capacitor.isNativePlatform() &&
       h('p', { style: 'margin-top:24px' }, h('button', { onclick: () => connectDemo().then(rerender) }, 'try demo (no flipper needed)')),
+    updatesCard(),
   );
 }
 
