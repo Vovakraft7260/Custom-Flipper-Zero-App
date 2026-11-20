@@ -71,6 +71,13 @@ export class FakeFlipper {
         }
         break;
       }
+      case 'system_protobuf_version_request':
+        this.reply({ command_id: id, system_protobuf_version_response: { major: 0, minor: 25 } });
+        break;
+      case 'app_start_request':
+        this.reply({ command_id: id, empty: {} });
+        if (m.app_start_request.args === 'RPC') this.reply({ command_id: 0, app_state_response: { state: 1 } });
+        break;
       case 'gui_start_screen_stream_request':
         this.reply({ command_id: id, empty: {} });
         clearInterval(this.streamTimer);
@@ -133,6 +140,13 @@ export function demoFlipper() {
   f.files.set('/ext/nfc/card.nfc', enc('Filetype: Flipper NFC device\nVersion: 4\nDevice type: NTAG215\nUID: 04 85 92 8A A0 61 81\n'));
   f.files.set('/ext/badusb/hello.txt', enc('REM hello world\nDELAY 500\nGUI r\nSTRING notepad\nENTER\n'));
   f.files.set('/ext/apps/Tools/clock.fap', new Uint8Array(4096));
+  f.dirs.add('/ext/ibutton');
+  f.files.set('/ext/infrared/tv.ir', enc('Filetype: IR signals file\nVersion: 1\n#\nname: Power\ntype: parsed\nprotocol: NEC\naddress: 07 00 00 00\ncommand: 02 00 00 00\n#\nname: Vol_up\ntype: parsed\nprotocol: NEC\naddress: 07 00 00 00\ncommand: 07 00 00 00\n#\nname: Vol_dn\ntype: parsed\nprotocol: NEC\naddress: 07 00 00 00\ncommand: 0B 00 00 00\n#\nname: Ch_next\ntype: parsed\nprotocol: NEC\naddress: 07 00 00 00\ncommand: 12 00 00 00\n#\nname: Ch_prev\ntype: parsed\nprotocol: NEC\naddress: 07 00 00 00\ncommand: 10 00 00 00\n#\nname: Mute\ntype: parsed\nprotocol: NEC\naddress: 07 00 00 00\ncommand: 0F 00 00 00\n#\nname: Netflix\ntype: parsed\nprotocol: NEC\naddress: 07 00 00 00\ncommand: 1A 00 00 00\n'));
+  const raw = [];
+  for (let i = 0; i < 120; i++) raw.push(i % 2 ? -(200 + ((i * 37) % 900)) : 300 + ((i * 53) % 700));
+  f.files.set('/ext/subghz/doorbell_raw.sub', enc(`Filetype: Flipper SubGhz RAW File\nVersion: 1\nFrequency: 433920000\nPreset: FuriHalSubGhzPresetOok650Async\nProtocol: RAW\nRAW_Data: ${raw.slice(0, 60).join(' ')}\nRAW_Data: ${raw.slice(60).join(' ')}\n`));
+  f.files.set('/ext/lfrfid/office.rfid', enc('Filetype: Flipper RFID key\nVersion: 1\nKey type: EM4100\nData: 1A 2B 3C 4D 5E\n'));
+  f.files.set('/ext/ibutton/door.ibtn', enc('Filetype: Flipper iButton key\nVersion: 2\nProtocol: DS1990\nRom Data: 01 A2 B3 C4 D5 E6 F7 08\n'));
   f.handleOrig = f.handle;
   f.handle = (m) => {
     if (m.content === 'system_device_info_request') {

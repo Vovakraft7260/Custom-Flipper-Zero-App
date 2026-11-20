@@ -15,6 +15,19 @@ export class Flipper {
     this.rpc = new FlipperRpc(transport);
   }
 
+  /** Protobuf minor version (decides which commands the firmware understands). */
+  async protobufMinor() {
+    if (this._pbMinor === undefined) {
+      try {
+        const [res] = await this.rpc.request({ system_protobuf_version_request: {} });
+        this._pbMinor = res.system_protobuf_version_response?.minor ?? 0;
+      } catch {
+        this._pbMinor = 0;
+      }
+    }
+    return this._pbMinor;
+  }
+
   ping() {
     return this.rpc.request({ system_ping_request: { data: new Uint8Array([1, 2, 3]) } });
   }

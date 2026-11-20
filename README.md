@@ -4,7 +4,7 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
 
 > Not affiliated with Flipper Devices. "Flipper Zero" is their trademark.
 
-## What it does (v0.2)
+## What it does (v0.3)
 
 - **Connect:** scan, pair and connect over Bluetooth. Already-paired Flippers show up right away.
 - **Device info:** name, firmware (official, Momentum, ...), hardware, battery, SD and internal storage.
@@ -13,6 +13,11 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
   - **Bad USB:** write, edit and run scripts (`/ext/badusb`). Works with both "Bad USB" (official) and "Bad KB" (Momentum).
   - **JS scripts:** write, edit and run Flipper JavaScript (`/ext/apps/Scripts`) with JS Runner.
   - **Signal folders:** Sub-GHz, NFC, RFID, Infrared, iButton and apps, each opening the file manager in its own folder.
+- **Signal viewers (tap a signal file):**
+  - **Infrared:** the `.ir` file becomes a remote. Tap a button and the Flipper sends it.
+  - **Sub-GHz:** frequency, modulation, protocol and key, plus a waveform picture for RAW recordings. Hold to send.
+  - **NFC / RFID / iButton:** card details (type, UID, data) and an emulate on/off button.
+  - Sending works the way the official app does it: the Flipper app opens in RPC mode, loads the file and "presses" its button.
 - **Remote:** live Flipper screen in an orange frame, with the D-pad, OK and Back buttons. Tap for a press, hold for a long press. Pressed buttons appear in a queue and are sent in order.
 - **Quick launch:** you pick which apps appear (built-in apps, installed `.fap` apps, or any name).
 - **Phone back button:** steps back through sheets, the editor, folders, tools and tabs, and only leaves the app at the end.
@@ -42,8 +47,8 @@ Without a signing key, builds are debug-signed with a random key, so you may nee
 - `proto/` holds Flipper's [protobuf definitions](https://github.com/flipperdevices/flipperzero-protobuf). `npm run proto` regenerates `src/flipper/proto-bundle.js`.
 
 ```
-src/flipper/   protocol: ble.js (transport), rpc.js, framing.js, api.js, screen.js, demo.js (pretend Flipper)
-src/ui/        screens: device, tools (files, script tools), editor, remote
+src/flipper/   protocol: ble.js (transport), rpc.js, framing.js, api.js, screen.js, emulate.js, flipperformat.js, demo.js (pretend Flipper)
+src/ui/        screens: device, tools (files, script tools), signals (viewers), editor, remote
 test/          node tests against the pretend Flipper
 ```
 

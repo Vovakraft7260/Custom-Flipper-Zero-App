@@ -5,6 +5,7 @@ import { conn } from '../connection.js';
 import { joinPath, parentPath } from '../flipper/api.js';
 import { isTextFile, openEditor, MAX_EDIT_SIZE } from './editor.js';
 import { saveToPhone, SAVE_FOLDER } from './save.js';
+import { openSignal, signalKind } from './signals.js';
 
 // Which Flipper app opens which file type ("open on flipper").
 const OPEN_WITH = {
@@ -124,6 +125,7 @@ function render(draw) {
             state.selected.has(e.name) ? state.selected.delete(e.name) : state.selected.add(e.name);
             draw();
           } else if (e.isDir) go(full);
+          else if (signalKind(e.name)) openSignal(full).then(() => load(draw));
           else fileActions(draw, e, full);
         },
       },
@@ -131,7 +133,12 @@ function render(draw) {
       h('span', { class: 'icon' }, e.isDir ? '▸' : '·'),
       h('span', { class: 'name' }, e.name),
       !e.isDir && h('span', { class: 'size' }, formatBytes(e.size)),
-      e.isDir && !state.selecting && h('button', { onclick: (ev) => (ev.stopPropagation(), folderActions(draw, e, full)) }, '⋯'),
+      !state.selecting &&
+        h(
+          'button',
+          { class: 'more', onclick: (ev) => (ev.stopPropagation(), e.isDir ? folderActions(draw, e, full) : fileActions(draw, e, full)) },
+          '⋯',
+        ),
     );
   });
 
@@ -150,6 +157,7 @@ function render(draw) {
     const ext = e.name.includes('.') ? e.name.split('.').pop().toLowerCase() : '';
     const inBadUsb = /\/badusb\//i.test(full);
     const buttons = [];
+    if (signalKind(e.name)) buttons.push({ label: '◉ view / send', value: 'view' });
     if (isTextFile(e.name) && e.size <= MAX_EDIT_SIZE) buttons.push({ label: '✎ edit', value: 'edit' });
     buttons.push({ label: '⇩ save to phone', value: 'save' });
     if (ext === 'fap') buttons.push({ label: '▶ run on flipper', value: 'run' });
@@ -158,7 +166,10 @@ function render(draw) {
 
     const choice = await sheet(`${full} · ${formatBytes(e.size)}`, buttons);
     try {
-      if (choice === 'edit') {
+      if (choice === 'view') {
+        await openSignal(full);
+        load(draw);
+      } else if (choice === 'edit') {
         state.busy = 'downloading…';
         draw();
         const bytes = await f.read(full);

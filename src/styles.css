@@ -93,3 +93,20 @@ canvas.screen.vertical { width: auto; height: min(70vh, 512px); }
 .tool { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 1; padding: 8px; border-radius: 12px; }
 .tool-icon { font-size: 26px; color: var(--accent); }
 .tool-label { font-size: 12px; text-align: center; }
+
+.signal { overflow-y: auto; }
+.signal-status { min-height: 20px; font-size: 13px; }
+.signal-status.busy { color: var(--accent); }
+.signal-status.ok { color: var(--ok); }
+.signal-status.bad { color: var(--bad); }
+.ir-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ir-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 76px; border-radius: 14px; touch-action: manipulation; }
+.ir-btn.power { border-color: var(--bad); color: var(--bad); }
+.ir-btn.pressed { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.ir-icon { font-size: 18px; }
+.ir-name { font-size: 12px; overflow-wrap: anywhere; text-align: center; }
+.hold-send { width: 100%; padding: 22px; margin: 16px 0 8px; font-size: 17px; border-color: var(--accent); color: var(--accent); border-radius: 12px; touch-action: none; user-select: none; }
+.hold-send.pressed { background: var(--accent); color: var(--bg); }
+.wave-wrap { margin: 8px 0; }
+canvas.wave { width: 100%; height: 90px; border: 1px solid var(--line); border-radius: 8px; }
+.file .more { padding: 6px 10px; }
