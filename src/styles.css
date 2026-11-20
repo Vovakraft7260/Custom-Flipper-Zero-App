@@ -81,9 +81,9 @@ canvas.screen.vertical { width: auto; height: min(70vh, 512px); }
 .pad-extra { display: flex; justify-content: center; margin-top: 12px; }
 .pad-extra button { min-width: 120px; }
 
-.toast { position: fixed; left: 16px; right: 16px; top: calc(60px + env(safe-area-inset-top)); background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 12px; z-index: 50; }
+.toast { position: fixed; left: 16px; right: 16px; top: calc(60px + env(safe-area-inset-top)); background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 12px; z-index: 70; }
 .toast.error { border-color: var(--bad); }
-.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: flex; align-items: flex-end; justify-content: center; z-index: 40; }
+.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: flex; align-items: flex-end; justify-content: center; z-index: 60; }
 .sheet { background: var(--panel); border-top: 1px solid var(--accent); width: 100%; max-width: 640px; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; max-height: 90vh; overflow-y: auto; }
 .sheet .title { color: var(--accent); overflow-wrap: anywhere; }
 .editor { position: fixed; inset: 0; background: var(--bg); z-index: 45; display: flex; flex-direction: column; padding: 12px; padding-top: calc(12px + env(safe-area-inset-top)); gap: 8px; }
@@ -131,3 +131,13 @@ canvas.wave { width: 100%; height: 90px; border: 1px solid var(--line); border-r
 .rb.c-blue { background: #1e3f8b; }
 .rb.app { font-size: 11px; }
 .scan-current { font-size: 20px; color: var(--accent); text-align: center; margin: 18px 0; min-height: 28px; }
+
+/* archive cards */
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.card-item { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px 12px; min-height: 96px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.card-item:active { border-color: var(--accent); }
+.card-icon { font-size: 22px; color: var(--accent); }
+.card-name { font-size: 14px; overflow-wrap: anywhere; padding-right: 22px; }
+.card-sub { font-size: 11px; }
+.star { position: absolute; top: 6px; right: 6px; border: 0; background: transparent; padding: 6px; color: var(--dim); font-size: 18px; }
+.star.on { color: var(--accent); }

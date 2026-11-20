@@ -4,10 +4,11 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
 
 > Not affiliated with Flipper Devices. "Flipper Zero" is their trademark.
 
-## What it does (v0.4)
+## What it does (v0.5)
 
 - **Connect:** scan, pair and connect over Bluetooth. Already-paired Flippers show up right away.
 - **Device info:** name, firmware (official, Momentum, ...), hardware, battery, SD and internal storage.
+- **Saved on Flipper:** Sub-GHz, NFC, RFID, Infrared, iButton and Bad USB items show as cards (like the official app's archive), with search and ★ favorites. Tap a card to open it. Rename and delete are inside the item's ⋯ menu, behind a confirm, so a stray tap can't delete anything.
 - **Tools tab:**
   - **File manager:** browse, upload from the phone, save to the phone (`Documents/0ilrig`), rename, delete, make folders, select many files at once, and edit text files.
   - **Bad USB:** write, edit and run scripts (`/ext/badusb`). Works with both "Bad USB" (official) and "Bad KB" (Momentum).
@@ -18,7 +19,7 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
   - **Sub-GHz:** frequency, modulation, protocol and key, plus a waveform picture for RAW recordings. Hold to send.
   - **NFC / RFID / iButton:** card details (type, UID, data) and an emulate on/off button.
   - Sending works the way the official app does it: the Flipper app opens in RPC mode, loads the file and "presses" its button.
-- **Universal TV remote (Tools tab):** a full remote for 105 TV brands: power, source, mute, D-pad with OK, back, home, menu, exit, info, guide, volume, channel, numbers, media and color keys, and app buttons. Several code sets per brand, and a "find my brand" scan for unknown TVs. The codes are bundled from [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) (CC0), so it works offline.
+- **Universal TV remote (Tools tab):** a full remote for 105 TV brands: power, source, mute, D-pad with OK, back, home, menu, exit, info, guide, volume, channel, numbers, media and color keys, and app buttons. Several code sets per brand, a **save to Flipper** button (keeps the remote in Infrared so it works without the phone), and a "find my brand" scan for unknown TVs. The codes are bundled from [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) (CC0), so it works offline.
 - **Remote:** live Flipper screen in an orange frame, with the D-pad, OK and Back buttons. Tap for a press, hold for a long press. Pressed buttons appear in a queue and are sent in order.
 - **Quick launch:** you pick which apps appear (built-in apps, installed `.fap` apps, or any name).
 - **Phone back button:** steps back through sheets, the editor, folders, tools and tabs, and only leaves the app at the end.

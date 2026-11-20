@@ -1,10 +1,11 @@
 // Tools tab: a grid of tools. Each one opens full-screen inside the tab.
-import { h, toast, showError, ask, sheet, confirmAction, formatBytes } from './dom.js';
+import { h, toast, showError, ask } from './dom.js';
 import { conn } from '../connection.js';
 import { joinPath } from '../flipper/api.js';
 import { RpcError } from '../flipper/rpc.js';
 import { openEditor } from './editor.js';
 import { filesView, filesBack, openFiles } from './files.js';
+import { archiveView, itemActions, resetArchive } from './archive.js';
 import { tvRemoteView, tvRemoteBack, openTvRemote, closeTvRemote } from './tvremote.js';
 
 const BAD_USB_TEMPLATE = `REM New Bad USB script
@@ -27,7 +28,8 @@ print("Hello from 0ilrig Trmnl");
 // Tools that are their own screen
 const SCRIPT_TOOLS = {
   badusb: {
-    title: 'Bad USB scripts',
+    title: 'bad usb scripts',
+    icon: '⌨',
     dir: '/ext/badusb',
     ext: '.txt',
     template: BAD_USB_TEMPLATE,
@@ -35,7 +37,8 @@ const SCRIPT_TOOLS = {
     runHint: 'Script loaded on the Flipper. Plug it into the computer and press OK to run.',
   },
   js: {
-    title: 'JS scripts',
+    title: 'js scripts',
+    icon: '{ }',
     dir: '/ext/apps/Scripts',
     ext: '.js',
     template: JS_TEMPLATE,
@@ -46,20 +49,19 @@ const SCRIPT_TOOLS = {
 
 // Tiles shown on the grid. kind "files" opens the file manager in that folder.
 const TOOLS = [
-  { id: 'files', icon: '/', label: 'file manager', kind: 'files', home: '/ext' },
-  { id: 'tvremote', icon: '📺', label: 'tv remote', kind: 'tvremote' },
-  { id: 'badusb', icon: '⌨', label: 'bad usb', kind: 'script' },
-  { id: 'js', icon: '{ }', label: 'js scripts', kind: 'script' },
-  { id: 'subghz', icon: '≋', label: 'sub-ghz', kind: 'files', home: '/ext/subghz' },
-  { id: 'nfc', icon: '◉', label: 'nfc', kind: 'files', home: '/ext/nfc' },
-  { id: 'rfid', icon: '▭', label: 'rfid 125k', kind: 'files', home: '/ext/lfrfid' },
-  { id: 'ir', icon: '⟿', label: 'infrared', kind: 'files', home: '/ext/infrared' },
-  { id: 'ibutton', icon: '◎', label: 'ibutton', kind: 'files', home: '/ext/ibutton' },
-  { id: 'apps', icon: '▦', label: 'apps (.fap)', kind: 'files', home: '/ext/apps' },
+  { id: 'subghz', icon: '≋', label: 'sub-ghz', kind: 'archive', group: 'saved' },
+  { id: 'nfc', icon: '◉', label: 'nfc', kind: 'archive', group: 'saved' },
+  { id: 'rfid', icon: '▭', label: 'rfid 125k', kind: 'archive', group: 'saved' },
+  { id: 'ir', icon: '⟿', label: 'infrared', kind: 'archive', group: 'saved' },
+  { id: 'ibutton', icon: '◎', label: 'ibutton', kind: 'archive', group: 'saved' },
+  { id: 'badusb', icon: '⌨', label: 'bad usb', kind: 'script', group: 'saved' },
+  { id: 'tvremote', icon: '📺', label: 'tv remote', kind: 'tvremote', group: 'tools' },
+  { id: 'js', icon: '{ }', label: 'js scripts', kind: 'script', group: 'tools' },
+  { id: 'apps', icon: '▦', label: 'apps (.fap)', kind: 'files', home: '/ext/apps', group: 'tools' },
+  { id: 'files', icon: '/', label: 'all files (advanced)', kind: 'files', home: '/ext', group: 'tools' },
 ];
 
 let openTool = null; // null = grid
-let scriptState = { entries: null, busy: '' };
 let rerenderTab = () => {};
 
 /** Called after "run" so the main screen can jump to the remote tab. */
@@ -84,7 +86,13 @@ export function toolsView(rerender) {
       h('button', { onclick: closeTool }, '← tools'),
       h('span', { class: 'muted' }, tool.label),
     ),
-    tool.kind === 'files' ? filesView() : tool.kind === 'tvremote' ? tvRemoteView(rerenderTab) : scriptView(SCRIPT_TOOLS[tool.id]),
+    tool.kind === 'files'
+      ? filesView()
+      : tool.kind === 'tvremote'
+        ? tvRemoteView(rerenderTab)
+        : tool.kind === 'archive'
+          ? archiveView(tool.id)
+          : scriptView(SCRIPT_TOOLS[tool.id]),
   );
 }
 
@@ -100,7 +108,7 @@ export function toolsBack() {
 
 export function resetTools() {
   openTool = null;
-  scriptState = { entries: null, busy: '' };
+  resetArchive();
 }
 
 function closeTool() {
@@ -110,14 +118,11 @@ function closeTool() {
 }
 
 function grid() {
-  return h(
-    'div',
-    {},
-    h('h2', {}, 'tools'),
+  const tiles = (group) =>
     h(
       'div',
       { class: 'tool-grid' },
-      TOOLS.map((t) =>
+      TOOLS.filter((t) => t.group === group).map((t) =>
         h(
           'button',
           {
@@ -126,7 +131,6 @@ function grid() {
               openTool = t.id;
               if (t.kind === 'files') openFiles(t.home);
               else if (t.kind === 'tvremote') openTvRemote();
-              else scriptState = { entries: null, busy: '' };
               rerenderTab();
             },
           },
@@ -134,108 +138,48 @@ function grid() {
           h('span', { class: 'tool-label' }, t.label),
         ),
       ),
-    ),
-  );
+    );
+  return h('div', {}, h('h2', {}, 'saved on flipper'), tiles('saved'), h('h2', {}, 'tools'), tiles('tools'));
 }
 
-// ---------- script tools (Bad USB, JS) ----------
+// ---------- script tools (Bad USB, JS): cards, tap to edit and run ----------
 
 function scriptView(cfg) {
-  const root = h('div');
-  const draw = () => root.replaceChildren(renderScripts(cfg, draw));
-  if (scriptState.entries === null) loadScripts(cfg, draw);
-  draw();
-  return root;
+  const cat = { title: cfg.title, icon: cfg.icon, dir: cfg.dir, exts: [cfg.ext] };
+  return archiveView(null, {
+    cat,
+    extraTop: h('button', { class: 'primary', style: 'width:100%;margin-bottom:10px', onclick: () => newScript(cfg) }, '+ new script'),
+    onOpen: async (item) => {
+      try {
+        const text = new TextDecoder().decode(await conn.flipper.read(item.path));
+        await editScript(cfg, item.path, text, item);
+      } catch (e) {
+        showError(e);
+      }
+    },
+  });
 }
 
-async function loadScripts(cfg, draw) {
-  scriptState.busy = 'loading…';
-  draw();
-  try {
-    const all = await conn.flipper.list(cfg.dir);
-    scriptState.entries = all.filter((e) => !e.isDir && e.name.toLowerCase().endsWith(cfg.ext));
-  } catch (e) {
-    // Folder missing on this Flipper: it gets created with the first script.
-    if (!(e instanceof RpcError && e.statusName === 'ERROR_STORAGE_NOT_EXIST')) showError(e);
-    scriptState.entries = [];
-  }
-  scriptState.busy = '';
-  draw();
-}
-
-function renderScripts(cfg, draw) {
-  const entries = scriptState.entries ?? [];
-  return h(
-    'div',
-    {},
-    h('div', { class: 'path' }, cfg.dir),
-    h(
-      'div',
-      { class: 'toolbar' },
-      h('button', { class: 'primary', onclick: () => newScript(cfg, draw) }, '+ new script'),
-      h('button', { onclick: () => loadScripts(cfg, draw) }, '⟳'),
-    ),
-    scriptState.busy && h('p', { class: 'muted' }, scriptState.busy),
-    !scriptState.busy && entries.length === 0 && h('p', { class: 'muted' }, 'no scripts yet'),
-    entries.map((e) =>
-      h(
-        'div',
-        { class: 'file', onclick: () => scriptActions(cfg, draw, e) },
-        h('span', { class: 'icon' }, '·'),
-        h('span', { class: 'name' }, e.name),
-        h('span', { class: 'size' }, formatBytes(e.size)),
-      ),
-    ),
-  );
-}
-
-async function newScript(cfg, draw) {
+async function newScript(cfg) {
   let name = await ask('script name', '', 'create');
   if (!name) return;
   if (name.includes('/')) return showError(new Error('Names cannot contain "/"'));
   if (!name.toLowerCase().endsWith(cfg.ext)) name += cfg.ext;
-  if ((scriptState.entries ?? []).some((e) => e.name === name)) return showError(new Error('A script with that name already exists.'));
   try {
     await ensureDir(cfg.dir);
     const path = joinPath(cfg.dir, name);
+    const existing = await conn.flipper.list(cfg.dir);
+    if (existing.some((e) => e.name === name)) return showError(new Error('A script with that name already exists.'));
     await conn.flipper.write(path, new TextEncoder().encode(cfg.template));
-    await editScript(cfg, path, cfg.template);
+    await editScript(cfg, path, cfg.template, { path, name: name.replace(/\.[^.]+$/, '') });
   } catch (e) {
     showError(e);
   }
-  loadScripts(cfg, draw);
+  resetArchive();
+  rerenderTab();
 }
 
-async function scriptActions(cfg, draw, e) {
-  const path = joinPath(cfg.dir, e.name);
-  const choice = await sheet(path, [
-    { label: '✎ edit', value: 'edit' },
-    { label: '▶ run on flipper', value: 'run' },
-    { label: 'rename', value: 'rename' },
-    { label: 'delete', value: 'delete', class: 'danger' },
-  ]);
-  try {
-    if (choice === 'edit') {
-      const text = new TextDecoder().decode(await conn.flipper.read(path));
-      await editScript(cfg, path, text);
-    } else if (choice === 'run') {
-      await run(cfg, path);
-    } else if (choice === 'rename') {
-      let next = await ask(`rename ${e.name}`, e.name, 'rename');
-      if (!next || next === e.name) return;
-      if (!next.toLowerCase().endsWith(cfg.ext)) next += cfg.ext;
-      await conn.flipper.rename(path, joinPath(cfg.dir, next));
-    } else if (choice === 'delete') {
-      if (!(await confirmAction(`Delete ${e.name}? This can't be undone.`, 'delete', true))) return;
-      await conn.flipper.remove(path);
-    }
-  } catch (err) {
-    showError(err);
-  }
-  loadScripts(cfg, draw);
-}
-
-function editScript(cfg, path, text) {
+function editScript(cfg, path, text, item) {
   return openEditor(path, text, (t) => conn.flipper.write(path, new TextEncoder().encode(t)), [
     {
       label: '▶ run',
@@ -243,6 +187,10 @@ function editScript(cfg, path, text) {
         await run(cfg, path);
         return true; // close the editor and show the Flipper screen
       },
+    },
+    {
+      label: '⋯',
+      action: async () => (await itemActions(item, () => resetArchive())()) === 'closed',
     },
   ]);
 }

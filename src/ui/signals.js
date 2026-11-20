@@ -13,8 +13,11 @@ export function signalKind(name) {
   return KIND_BY_EXT[ext] ?? null;
 }
 
-/** Opens the viewer for a signal file. Resolves when it is closed. */
-export function openSignal(path) {
+/**
+ * Opens the viewer for a signal file. Resolves when it is closed.
+ * opts.actions: async function for the "⋯" menu; returning 'closed' closes the viewer.
+ */
+export function openSignal(path, opts = {}) {
   const kind = signalKind(path);
   const f = conn.flipper;
   const emulator = new Emulator(f, kind, path);
@@ -64,6 +67,17 @@ export function openSignal(path) {
         h('button', { onclick: close }, '←'),
         h('div', { class: 'grow' }, h('div', { class: 'muted', style: 'font-size:12px' }, TITLES[kind]), h('div', { class: 'path' }, path.split('/').pop())),
         h('button', { onclick: editText }, '✎ text'),
+        opts.actions &&
+          h(
+            'button',
+            {
+              onclick: async () => {
+                await emulator.stop();
+                if ((await opts.actions()) === 'closed') close();
+              },
+            },
+            '⋯',
+          ),
       ),
       statusLine,
       body,

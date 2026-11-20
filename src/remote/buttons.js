@@ -35,3 +35,13 @@ export const BUTTONS = [
   { id: 'youtube', label: 'YOUTUBE', title: 'youtube', match: ['youtube'] },
   { id: 'prime', label: 'PRIME', title: 'prime video', match: ['prime_video', 'prime', 'amazon'] },
 ];
+
+/** Button names used when saving a remote to the Flipper (Flipper's usual naming). */
+export const SAVE_NAMES = {
+  power: 'Power', source: 'Source', mute: 'Mute', vol_up: 'Vol_up', vol_dn: 'Vol_dn', ch_up: 'Ch_next', ch_dn: 'Ch_prev',
+  up: 'Up', down: 'Down', left: 'Left', right: 'Right', ok: 'Ok', back: 'Back', home: 'Home', menu: 'Menu', exit: 'Exit',
+  info: 'Info', guide: 'Guide', prev_ch: 'Prev_ch', list: 'Ch_list', rew: 'Rewind', play: 'Play', pause: 'Pause', stop: 'Stop',
+  ff: 'Fast_fo', red: 'Red', green: 'Green', yellow: 'Yellow', blue: 'Blue', subtitle: 'Subtitle', netflix: 'Netflix',
+  youtube: 'Youtube', prime: 'Prime_video',
+  ...Object.fromEntries('1234567890'.split('').map((d) => [`n${d}`, d])),
+};

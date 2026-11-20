@@ -1,8 +1,10 @@
 // Universal TV remote: pick a brand, get a full remote (OK, arrows, numbers, menu...).
 // Codes come bundled with the app (Flipper-IRDB), so it works offline.
-import { h, showError, toast } from './dom.js';
+import { h, showError, toast, ask, confirmAction } from './dom.js';
 import { conn } from '../connection.js';
-import { BUTTONS } from '../remote/buttons.js';
+import { BUTTONS, SAVE_NAMES } from '../remote/buttons.js';
+import { buildIrFile } from '../remote/irfile.js';
+import { RpcError } from '../flipper/rpc.js';
 import { RemoteSender } from '../remote/sender.js';
 
 const SAVED_KEY = 'oilrig.tvRemote';
@@ -209,12 +211,37 @@ function remoteScreen() {
     h('div', { class: 'rrow' }, btn('rew'), btn('play'), btn('pause'), btn('stop'), btn('ff')),
     h('div', { class: 'rrow' }, btn('red', 'c-red'), btn('green', 'c-green'), btn('yellow', 'c-yellow'), btn('blue', 'c-blue')),
     h('div', { class: 'rrow' }, btn('netflix', 'app'), btn('youtube', 'app'), btn('prime', 'app')),
+    h('button', { class: 'primary', style: 'width:100%;margin-top:6px', onclick: () => saveToFlipper(brand, setIndex, set) }, '💾 save this remote to flipper'),
     h(
       'p',
       { class: 'muted', style: 'font-size:12px;text-align:center' },
       `Greyed-out buttons aren't in this code set. If the TV doesn't react, try the next code set (‹ ›). Codes: ${set.from}.`,
     ),
   );
+}
+
+/** Saves the current code set as a normal remote in /ext/infrared, usable without the phone. */
+async function saveToFlipper(brand, setIndex, set) {
+  const suggested = `${brand.name} TV${brand.sets.length > 1 ? ` ${setIndex + 1}` : ''}`;
+  let name = await ask('name for the remote on your flipper', suggested, 'save');
+  if (!name) return;
+  name = name.replace(/[\\/:*?"<>|]/g, '').trim();
+  if (!name) return;
+  const path = `/ext/infrared/${name}.ir`;
+  const f = conn.flipper;
+  try {
+    const existing = await f.list('/ext/infrared').catch((e) => {
+      if (e instanceof RpcError && e.statusName === 'ERROR_STORAGE_NOT_EXIST') return null;
+      throw e;
+    });
+    if (existing === null) await f.mkdir('/ext/infrared');
+    if (existing?.some((e) => e.name === `${name}.ir`) && !(await confirmAction(`${name}.ir already exists. Replace it?`, 'replace', true))) return;
+    const entries = BUTTONS.filter((b) => set.keys[b.id]).map((b) => ({ name: SAVE_NAMES[b.id] ?? b.id, code: set.keys[b.id] }));
+    await f.write(path, new TextEncoder().encode(buildIrFile(entries)));
+    toast(`Saved to Infrared as "${name}". It works on the Flipper without the phone.`, { ms: 5000 });
+  } catch (e) {
+    showError(e);
+  }
 }
 
 // ---------- find my brand ----------
