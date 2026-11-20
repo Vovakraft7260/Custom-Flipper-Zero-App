@@ -110,3 +110,24 @@ canvas.screen.vertical { width: auto; height: min(70vh, 512px); }
 .wave-wrap { margin: 8px 0; }
 canvas.wave { width: 100%; height: 90px; border: 1px solid var(--line); border-radius: 8px; }
 .file .more { padding: 6px 10px; }
+
+/* universal tv remote */
+.tvr .rb { min-height: 52px; padding: 6px 4px; font-size: 14px; border-radius: 12px; touch-action: manipulation; }
+.tvr .rb:disabled { opacity: 0.2; }
+.tvr .rb.pressed { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.rrow { display: flex; gap: 8px; margin: 10px 0; }
+.rrow > * { flex: 1; }
+.rrow.col { flex-direction: column; margin: 0; }
+.rb.power { border-color: var(--bad); color: var(--bad); font-size: 20px; }
+.dpad { display: grid; grid-template-columns: repeat(3, 72px); grid-template-rows: repeat(3, 64px); gap: 6px; justify-content: center; margin: 14px 0; }
+.dpad .rb { border-radius: 50%; font-size: 18px; }
+.dpad .okb { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.rockers { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; align-items: center; margin: 10px 0; }
+.rocker { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: center; font-size: 11px; }
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.rb.c-red { background: #8b1e1e; }
+.rb.c-green { background: #1e6b2e; }
+.rb.c-yellow { background: #8a7a12; }
+.rb.c-blue { background: #1e3f8b; }
+.rb.app { font-size: 11px; }
+.scan-current { font-size: 20px; color: var(--accent); text-align: center; margin: 18px 0; min-height: 28px; }

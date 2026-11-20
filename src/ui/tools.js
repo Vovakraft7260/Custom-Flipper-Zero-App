@@ -5,6 +5,7 @@ import { joinPath } from '../flipper/api.js';
 import { RpcError } from '../flipper/rpc.js';
 import { openEditor } from './editor.js';
 import { filesView, filesBack, openFiles } from './files.js';
+import { tvRemoteView, tvRemoteBack, openTvRemote, closeTvRemote } from './tvremote.js';
 
 const BAD_USB_TEMPLATE = `REM New Bad USB script
 REM Docs: https://docs.flipper.net/zero/bad-usb
@@ -46,6 +47,7 @@ const SCRIPT_TOOLS = {
 // Tiles shown on the grid. kind "files" opens the file manager in that folder.
 const TOOLS = [
   { id: 'files', icon: '/', label: 'file manager', kind: 'files', home: '/ext' },
+  { id: 'tvremote', icon: '📺', label: 'tv remote', kind: 'tvremote' },
   { id: 'badusb', icon: '⌨', label: 'bad usb', kind: 'script' },
   { id: 'js', icon: '{ }', label: 'js scripts', kind: 'script' },
   { id: 'subghz', icon: '≋', label: 'sub-ghz', kind: 'files', home: '/ext/subghz' },
@@ -82,7 +84,7 @@ export function toolsView(rerender) {
       h('button', { onclick: closeTool }, '← tools'),
       h('span', { class: 'muted' }, tool.label),
     ),
-    tool.kind === 'files' ? filesView() : scriptView(SCRIPT_TOOLS[tool.id]),
+    tool.kind === 'files' ? filesView() : tool.kind === 'tvremote' ? tvRemoteView(rerenderTab) : scriptView(SCRIPT_TOOLS[tool.id]),
   );
 }
 
@@ -91,6 +93,7 @@ export function toolsBack() {
   if (!openTool) return false;
   const tool = TOOLS.find((t) => t.id === openTool);
   if (tool.kind === 'files' && filesBack()) return true;
+  if (tool.kind === 'tvremote' && tvRemoteBack()) return true;
   closeTool();
   return true;
 }
@@ -101,6 +104,7 @@ export function resetTools() {
 }
 
 function closeTool() {
+  if (openTool === 'tvremote') closeTvRemote();
   openTool = null;
   rerenderTab();
 }
@@ -121,6 +125,7 @@ function grid() {
             onclick: () => {
               openTool = t.id;
               if (t.kind === 'files') openFiles(t.home);
+              else if (t.kind === 'tvremote') openTvRemote();
               else scriptState = { entries: null, busy: '' };
               rerenderTab();
             },

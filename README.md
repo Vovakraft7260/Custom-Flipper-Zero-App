@@ -4,7 +4,7 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
 
 > Not affiliated with Flipper Devices. "Flipper Zero" is their trademark.
 
-## What it does (v0.3)
+## What it does (v0.4)
 
 - **Connect:** scan, pair and connect over Bluetooth. Already-paired Flippers show up right away.
 - **Device info:** name, firmware (official, Momentum, ...), hardware, battery, SD and internal storage.
@@ -18,6 +18,7 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
   - **Sub-GHz:** frequency, modulation, protocol and key, plus a waveform picture for RAW recordings. Hold to send.
   - **NFC / RFID / iButton:** card details (type, UID, data) and an emulate on/off button.
   - Sending works the way the official app does it: the Flipper app opens in RPC mode, loads the file and "presses" its button.
+- **Universal TV remote (Tools tab):** a full remote for 105 TV brands: power, source, mute, D-pad with OK, back, home, menu, exit, info, guide, volume, channel, numbers, media and color keys, and app buttons. Several code sets per brand, and a "find my brand" scan for unknown TVs. The codes are bundled from [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) (CC0), so it works offline.
 - **Remote:** live Flipper screen in an orange frame, with the D-pad, OK and Back buttons. Tap for a press, hold for a long press. Pressed buttons appear in a queue and are sent in order.
 - **Quick launch:** you pick which apps appear (built-in apps, installed `.fap` apps, or any name).
 - **Phone back button:** steps back through sheets, the editor, folders, tools and tabs, and only leaves the app at the end.
@@ -44,6 +45,7 @@ Without a signing key, builds are debug-signed with a random key, so you may nee
 
 - UI is plain HTML/CSS/JS built with Vite and wrapped into Android with [Capacitor](https://capacitorjs.com).
 - Bluetooth uses [`@capacitor-community/bluetooth-le`](https://github.com/capacitor-community/bluetooth-le). It talks Flipper RPC (protobuf) over the Flipper's BLE serial service, with the same UUIDs and flow control as the [official app](https://github.com/flipperdevices/Flipper-Android-App).
+- `src/remote/tv-codes.js` is generated from Flipper-IRDB with `node scripts/build-tv-remotes.mjs <path to Flipper-IRDB/TVs>`.
 - `proto/` holds Flipper's [protobuf definitions](https://github.com/flipperdevices/flipperzero-protobuf). `npm run proto` regenerates `src/flipper/proto-bundle.js`.
 
 ```
