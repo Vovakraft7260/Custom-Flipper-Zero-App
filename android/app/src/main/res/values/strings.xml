@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">0ilrig Trmnl</string>
+    <string name="title_activity_main">0ilrig Trmnl</string>
+    <string name="package_name">io.github.vovakraft7260.oilrigtrmnl</string>
+    <string name="custom_url_scheme">io.github.vovakraft7260.oilrigtrmnl</string>
+</resources>

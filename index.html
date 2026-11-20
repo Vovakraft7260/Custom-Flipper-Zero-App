@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>0ilrig Trmnl</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <span class="logo">0ilrig<span class="accent">_</span>trmnl</span>
+      <span id="status" class="status off">offline</span>
+    </header>
+    <main id="view"></main>
+    <nav class="tabs" id="tabs">
+      <button data-tab="device" class="active">[ device ]</button>
+      <button data-tab="tools">[ tools ]</button>
+      <button data-tab="remote">[ remote ]</button>
+    </nav>
+    <div id="toast" class="toast" hidden></div>
+    <div id="modal-root"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
