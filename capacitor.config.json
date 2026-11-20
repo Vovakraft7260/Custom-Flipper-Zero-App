@@ -1,0 +1,8 @@
+{
+  "appId": "io.github.vovakraft7260.oilrigtrmnl",
+  "appName": "0ilrig Trmnl",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}
