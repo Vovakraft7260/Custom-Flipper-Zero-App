@@ -1,11 +1,13 @@
 // Builds the asset pack list from Momentum's Asset-Packs repo (each pack has
 // meta.json, preview images and a ready-made .tar.gz for the Flipper).
-// Usage: node scripts/build-packs-index.mjs <work dir> <out.json>
+// Also packs the community packs in this repo's asset-packs/ folder.
+// Usage: node scripts/build-packs-index.mjs <work dir> <out.json> [<publish dir>]
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { buildCommunityPacks } from './community-packs.mjs';
 
-const [work = 'packs-work', out = 'packs.json'] = process.argv.slice(2);
+const [work = 'packs-work', out = 'packs.json', pub = dirname(out)] = process.argv.slice(2);
 const SOURCES = [{ id: 'momentum', name: 'Momentum asset packs', repo: 'Next-Flip/Asset-Packs' }];
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1 << 28 });
 
@@ -51,6 +53,12 @@ for (const src of SOURCES) {
   packs.sort((a, b) => a.name.localeCompare(b.name));
   result.sources.push({ id: src.id, name: src.name, repo: src.repo, sha, packs });
   console.log(`${src.id}: ${packs.length} packs`);
+}
+const community = await buildCommunityPacks('asset-packs', pub);
+if (community.length) {
+  // Served from the library-index branch, next to packs.json.
+  const repo = process.env.GITHUB_REPOSITORY || 'Vovakraft7260/Custom-Flipper-Zero-App';
+  result.sources.unshift({ id: 'community', name: '0ilrig community packs', repo, sha: 'library-index', packs: community });
 }
 writeFileSync(out, JSON.stringify(result));
 console.log(`wrote ${out}`);

@@ -1,5 +1,5 @@
 // App store: browse the Flipper app catalog, install / update / remove apps.
-import { h, saveScroll, restoreScroll, toast, showError, confirmAction } from './dom.js';
+import { h, saveScroll, restoreScroll, toast, showError, confirmAction, moreButton } from './dom.js';
 import { conn } from '../connection.js';
 import { http } from '../store/http.js';
 import { sdkFromInfo, listCategories, listApps, getApp, findUpdates, statusProblem } from '../store/catalog.js';
@@ -265,7 +265,7 @@ function detailsBody(app, redraw) {
       : [
           mine.versionUid !== app.versionId && h('button', { class: 'primary', disabled: working, onclick: install }, `⇧ update to ${app.version}`),
           h('button', { disabled: working, onclick: open }, '▶ open on flipper'),
-          h('button', { class: 'danger', disabled: working, onclick: remove }, 'remove'),
+          !working && moreButton(app.name, [{ label: 'remove from flipper…', danger: true, run: remove }], { corner: false }),
         ];
   return h(
     'div',

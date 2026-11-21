@@ -1,10 +1,10 @@
 // Asset packs: browse Momentum packs, look inside (animations + icons), install.
-import { h, toast, showError, confirmAction, saveScroll, restoreScroll } from './dom.js';
+import { h, toast, showError, confirmAction, saveScroll, restoreScroll, moreButton } from './dom.js';
 import { conn } from '../connection.js';
 import { cached } from '../store/cache.js';
-import { PACKS_URL, expandPacks, packContents, framesOf, readArchive, installPack, installedPacks, removePack } from '../assets/packs.js';
+import { PACKS_URL, expandPacks, packContents, framesOf, readArchive, installPack, installedPacks, removePack, readInstalledPack } from '../assets/packs.js';
 
-let stack = []; // { type: 'pack', key } | { type: 'inside', key } | { type: 'local', pack }
+let stack = []; // { type: 'pack', key } | { type: 'inside', key } | { type: 'local', pack } | { type: 'flipper', name }
 const scrollMemo = [];
 let rerender = () => {};
 let packs = null;
@@ -50,7 +50,15 @@ export function packsView(rerenderTab) {
     if (!onFlipper) onFlipper = conn.state === 'online' ? await installedPacks(conn.flipper) : [];
     const top = stack[stack.length - 1];
     root.replaceChildren(
-      !top ? home() : top.type === 'pack' ? packPage(packs.find((p) => p.key === top.key)) : top.type === 'inside' ? insidePage(top.key) : localPage(top.pack),
+      !top
+        ? home()
+        : top.type === 'pack'
+          ? packPage(packs.find((p) => p.key === top.key))
+          : top.type === 'inside'
+            ? insidePage(top.key)
+            : top.type === 'flipper'
+              ? flipperPage(top.name)
+              : localPage(top.pack),
     );
   })().catch((e) => root.replaceChildren(h('p', { class: 'tip' }, `Couldn't load asset packs. Check your internet connection. (${e.message})`), h('button', { onclick: rerender }, 'try again')));
   return root;
@@ -127,18 +135,20 @@ function home() {
 function installedCard(name) {
   return h(
     'div',
-    { class: 'card-item' },
+    { class: 'card-item', role: 'button', onclick: () => go({ type: 'flipper', name }) },
     h('span', { class: 'card-icon' }, '✓'),
     h('span', { class: 'card-name' }, name),
-    h(
-      'button',
+    h('span', { class: 'card-sub muted' }, 'tap to look inside'),
+    moreButton(name, [
+      { label: '🔍 look inside', run: () => go({ type: 'flipper', name }) },
       {
-        class: 'danger',
-        style: 'margin-top:auto',
-        onclick: async () => {
+        label: 'remove from flipper…',
+        danger: true,
+        run: async () => {
           if (!(await confirmAction(`Remove the "${name}" pack from the Flipper?`, 'yes, remove it', true))) return;
           try {
             await removePack(conn.flipper, name);
+            downloaded.delete(`flipper/${name}`);
             onFlipper = onFlipper.filter((n) => n !== name);
             toast('pack removed');
             rerender();
@@ -147,8 +157,7 @@ function installedCard(name) {
           }
         },
       },
-      'remove',
-    ),
+    ]),
   );
 }
 
@@ -175,6 +184,7 @@ function installButtons(getPack, label) {
       status.textContent = 'downloading…';
       const pack = await getPack();
       await installPack(conn.flipper, pack, { step: (t) => (status.textContent = t) });
+      downloaded.delete(`flipper/${pack.name}`);
       onFlipper = [...new Set([...(onFlipper ?? []), pack.name])].sort();
       status.textContent = '';
       toast(`Installed! On the Flipper: Momentum settings › Interface › Graphics › ${pack.name}`, { ms: 7000 });
@@ -212,6 +222,18 @@ function insidePage(key) {
   getContents(p)
     .then((c) => root.replaceChildren(h('div', { class: 'app-name big', style: 'margin-bottom:8px' }, p.name), contentsView(c)))
     .catch((e) => root.replaceChildren(h('p', { class: 'tip' }, `Couldn't download it. (${e.message})`)));
+  return root;
+}
+
+function flipperPage(name) {
+  const key = `flipper/${name}`;
+  const status = h('p', { class: 'muted' }, 'reading the pack from your flipper…');
+  const root = h('div', {}, h('div', { class: 'app-name big' }, name, h('span', { class: 'app-tag installed' }, 'on flipper')), status);
+  (async () => {
+    if (!downloaded.has(key)) downloaded.set(key, await readInstalledPack(conn.flipper, name, { step: (t) => (status.textContent = t) }));
+    status.textContent = 'Pick it on the Flipper in Momentum settings › Interface › Graphics.';
+    root.append(contentsView(downloaded.get(key)));
+  })().catch((e) => (status.textContent = `Couldn't read it. (${e.message})`));
   return root;
 }
 

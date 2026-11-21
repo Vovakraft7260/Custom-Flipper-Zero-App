@@ -3,6 +3,7 @@ import { readArchive } from './archive.js';
 import { decodeBm, decodeBmx, sizeFromName } from './bm.js';
 import { parseFields } from '../flipper/flipperformat.js';
 import { RpcError } from '../flipper/rpc.js';
+import { scanFiles } from '../backup/backup.js';
 
 export const PACKS_URL = 'https://raw.githubusercontent.com/Vovakraft7260/Custom-Flipper-Zero-App/library-index/packs.json';
 export const PACKS_DIR = '/ext/asset_packs';
@@ -135,4 +136,17 @@ export async function installedPacks(f) {
 
 export async function removePack(f, name) {
   await f.remove(`${PACKS_DIR}/${name}`, true);
+}
+
+/** Reads an installed pack back from the SD card so it can be looked at. */
+export async function readInstalledPack(f, name, { step = () => {} } = {}) {
+  const base = `${PACKS_DIR}/${name}`;
+  step('looking at the files…');
+  const list = (await scanFiles(f, base)).filter((x) => /\/(Anims|Icons|Fonts)\//.test(x.path));
+  const files = [];
+  for (const [i, x] of list.entries()) {
+    step(`reading from flipper… ${i + 1} of ${list.length} files`);
+    files.push({ path: `${name}/${x.path.slice(base.length + 1)}`, data: await f.read(x.path) });
+  }
+  return packContents(files);
 }
