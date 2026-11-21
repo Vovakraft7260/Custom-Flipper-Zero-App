@@ -179,6 +179,7 @@ function connectedView(rerender) {
         'disconnect',
       ),
     ),
+    updatesCard(),
   );
 }
 
