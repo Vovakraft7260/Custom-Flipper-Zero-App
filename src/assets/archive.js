@@ -109,8 +109,10 @@ export function crc32(bytes) {
 }
 
 /** files: [{ path, data }] → zip bytes. */
-export function writeZip(files) {
+export function writeZip(files, when = new Date()) {
   const enc = new TextEncoder();
+  const dosTime = (when.getHours() << 11) | (when.getMinutes() << 5) | (when.getSeconds() >> 1);
+  const dosDate = ((Math.max(1980, when.getFullYear()) - 1980) << 9) | ((when.getMonth() + 1) << 5) | when.getDate();
   const parts = [];
   const central = [];
   let offset = 0;
@@ -121,6 +123,8 @@ export function writeZip(files) {
     local.setUint32(0, 0x04034b50, true);
     local.setUint16(4, 20, true);
     local.setUint16(6, 0x0800, true); // UTF-8 names
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
     local.setUint32(14, crc, true);
     local.setUint32(18, f.data.length, true);
     local.setUint32(22, f.data.length, true);
@@ -131,6 +135,8 @@ export function writeZip(files) {
     cen.setUint16(4, 20, true);
     cen.setUint16(6, 20, true);
     cen.setUint16(8, 0x0800, true);
+    cen.setUint16(12, dosTime, true);
+    cen.setUint16(14, dosDate, true);
     cen.setUint32(16, crc, true);
     cen.setUint32(20, f.data.length, true);
     cen.setUint32(24, f.data.length, true);
