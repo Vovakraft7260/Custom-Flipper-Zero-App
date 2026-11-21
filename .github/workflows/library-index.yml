@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+      - run: npm ci
       - name: Build index
         run: |
           node scripts/build-library-index.mjs "$RUNNER_TEMP/work" "$RUNNER_TEMP/index.json"
