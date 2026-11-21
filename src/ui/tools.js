@@ -95,7 +95,7 @@ export function toolsView(rerender) {
     h(
       'div',
       { class: 'row', style: 'margin-bottom:8px' },
-      h('button', { onclick: closeTool }, '← tools'),
+      h('button', { onclick: () => toolsBack() }, '← back'),
       h('span', { class: 'muted' }, tool.label),
     ),
     {

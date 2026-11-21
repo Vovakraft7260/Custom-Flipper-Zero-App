@@ -22,6 +22,25 @@ async function removeIfThere(f, path) {
   }
 }
 
+/** Every .fap on the SD card (catalog installs and apps that came with the firmware): alias -> path. */
+export async function fapsOnFlipper(f, dir = '/ext/apps', depth = 0, out = new Map()) {
+  let entries;
+  try {
+    entries = await f.list(dir);
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    const path = `${dir}/${e.name}`;
+    if (e.isDir) {
+      if (depth < 1) await fapsOnFlipper(f, path, depth + 1, out);
+    } else if (e.name.toLowerCase().endsWith('.fap')) {
+      out.set(e.name.slice(0, -4), path);
+    }
+  }
+  return out;
+}
+
 /** Apps installed from the catalog (by this app or the official one). */
 export async function installedApps(f) {
   let entries;
