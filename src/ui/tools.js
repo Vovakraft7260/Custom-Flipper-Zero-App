@@ -6,6 +6,7 @@ import { RpcError } from '../flipper/rpc.js';
 import { openEditor } from './editor.js';
 import { filesView, filesBack, openFiles } from './files.js';
 import { archiveView, itemActions, resetArchive } from './archive.js';
+import { storeView, storeBack, openStore, resetStore } from './store.js';
 import { libraryView, libraryBack, openLibrary } from './library.js';
 import { tvRemoteView, tvRemoteBack, openTvRemote, closeTvRemote } from './tvremote.js';
 
@@ -56,10 +57,11 @@ const TOOLS = [
   { id: 'ir', icon: '⟿', label: 'infrared', kind: 'archive', group: 'saved' },
   { id: 'ibutton', icon: '◎', label: 'ibutton', kind: 'archive', group: 'saved' },
   { id: 'badusb', icon: '⌨', label: 'bad usb', kind: 'script', group: 'saved' },
+  { id: 'store', icon: '⬇', label: 'app store', kind: 'store', group: 'tools' },
   { id: 'library', icon: '🌐', label: 'signal library', kind: 'library', group: 'tools' },
   { id: 'tvremote', icon: '📺', label: 'tv remote', kind: 'tvremote', group: 'tools' },
   { id: 'js', icon: '{ }', label: 'js scripts', kind: 'script', group: 'tools' },
-  { id: 'apps', icon: '▦', label: 'apps (.fap)', kind: 'files', home: '/ext/apps', group: 'tools' },
+  { id: 'apps', icon: '▦', label: 'apps folder (advanced)', kind: 'files', home: '/ext/apps', group: 'tools' },
   { id: 'files', icon: '/', label: 'all files (advanced)', kind: 'files', home: '/ext', group: 'tools' },
 ];
 
@@ -97,6 +99,7 @@ export function toolsView(rerender) {
       h('span', { class: 'muted' }, tool.label),
     ),
     {
+      store: () => storeView(rerenderTab),
       library: () => libraryView(rerenderTab),
       files: () => filesView(),
       tvremote: () => tvRemoteView(rerenderTab),
@@ -113,6 +116,7 @@ export function toolsBack() {
   if (tool.kind === 'files' && filesBack()) return true;
   if (tool.kind === 'tvremote' && tvRemoteBack()) return true;
   if (tool.kind === 'library' && libraryBack()) return true;
+  if (tool.kind === 'store' && storeBack()) return true;
   closeTool();
   return true;
 }
@@ -120,6 +124,7 @@ export function toolsBack() {
 export function resetTools() {
   openTool = null;
   resetArchive();
+  resetStore();
 }
 
 function closeTool() {

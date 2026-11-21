@@ -150,7 +150,7 @@ export function demoFlipper() {
   f.handleOrig = f.handle;
   f.handle = (m) => {
     if (m.content === 'system_device_info_request') {
-      const kv = { hardware_name: 'Rig0', hardware_model: 'Flipper Zero', hardware_ver: '12', firmware_origin_fork: 'Momentum', firmware_version: 'mntm-010', firmware_branch: 'release', protobuf_version_major: '0', protobuf_version_minor: '25' };
+      const kv = { hardware_name: 'Rig0', hardware_model: 'Flipper Zero', hardware_ver: '12', firmware_origin_fork: 'Momentum', firmware_version: 'mntm-010', firmware_branch: 'release', firmware_api_major: '87', firmware_api_minor: '1', hardware_target: '7', protobuf_version_major: '0', protobuf_version_minor: '25' };
       const entries = Object.entries(kv);
       entries.forEach(([key, value], i) => f.reply({ command_id: m.command_id, has_next: i < entries.length - 1, system_device_info_response: { key, value } }));
       return;
