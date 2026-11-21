@@ -8,6 +8,7 @@ import { filesView, filesBack, openFiles } from './files.js';
 import { archiveView, itemActions, resetArchive } from './archive.js';
 import { packsView, packsBack, openPacks, resetPacks } from './packs.js';
 import { backupView, backupBack, openBackup, resetBackup } from './backup.js';
+import { firmwareView, firmwareBack, openFirmware, resetFirmware } from './firmware.js';
 import { storeView, storeBack, openStore, resetStore } from './store.js';
 import { libraryView, libraryBack, openLibrary } from './library.js';
 import { tvRemoteView, tvRemoteBack, openTvRemote, closeTvRemote } from './tvremote.js';
@@ -61,6 +62,7 @@ const TOOLS = [
   { id: 'badusb', icon: '⌨', label: 'bad usb', kind: 'script', group: 'saved' },
   { id: 'store', icon: '⬇', label: 'app store', kind: 'store', group: 'tools' },
   { id: 'packs', icon: '🐬', label: 'asset packs', kind: 'packs', group: 'tools' },
+  { id: 'firmware', icon: '⚡', label: 'firmware', kind: 'firmware', group: 'tools' },
   { id: 'backup', icon: '⛁', label: 'sd backup', kind: 'backup', group: 'tools' },
   { id: 'library', icon: '🌐', label: 'signal library', kind: 'library', group: 'tools' },
   { id: 'tvremote', icon: '📺', label: 'tv remote', kind: 'tvremote', group: 'tools' },
@@ -106,6 +108,7 @@ export function toolsView(rerender) {
       store: () => storeView(rerenderTab),
       packs: () => packsView(rerenderTab),
       backup: () => backupView(rerenderTab),
+      firmware: () => firmwareView(rerenderTab),
       library: () => libraryView(rerenderTab),
       files: () => filesView(),
       tvremote: () => tvRemoteView(rerenderTab),
@@ -125,6 +128,7 @@ export function toolsBack() {
   if (tool.kind === 'store' && storeBack()) return true;
   if (tool.kind === 'packs' && packsBack()) return true;
   if (tool.kind === 'backup' && backupBack()) return true;
+  if (tool.kind === 'firmware' && firmwareBack()) return true;
   closeTool();
   return true;
 }
@@ -135,6 +139,7 @@ export function resetTools() {
   resetStore();
   resetPacks();
   resetBackup();
+  resetFirmware();
 }
 
 function closeTool() {
@@ -165,6 +170,7 @@ function tileGrid(list) {
             else if (t.kind === 'store') openStore();
             else if (t.kind === 'packs') openPacks();
             else if (t.kind === 'backup') openBackup();
+            else if (t.kind === 'firmware') openFirmware();
             rerenderTab();
           },
         },

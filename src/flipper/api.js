@@ -2,6 +2,8 @@
 import { FlipperRpc, RpcError } from './rpc.js';
 import { FileType, InputKey, InputType } from './proto.js';
 
+const UPDATE_RESULTS = ['OK', 'ManifestPathInvalid', 'ManifestFolderNotFound', 'ManifestInvalid', 'StageMissing', 'StageIntegrityError', 'ManifestPointerError', 'TargetMismatch', 'OutdatedManifestVersion', 'IntFull', 'UnspecifiedError'];
+
 export const MAX_FILE_CHUNK = 512; // same chunk size the official app uses
 
 // Same app, different names depending on the firmware.
@@ -99,6 +101,17 @@ export class Flipper {
     await this.rpc.request({ storage_mkdir_request: { path } });
   }
 
+  /** MD5 checksum of a file on the Flipper (hex), or null when it isn't there. */
+  async md5(path) {
+    try {
+      const [res] = await this.rpc.request({ storage_md5sum_request: { path } });
+      return res.storage_md5sum_response?.md5sum?.toLowerCase() ?? null;
+    } catch (e) {
+      if (e instanceof RpcError) return null;
+      throw e;
+    }
+  }
+
   async rename(oldPath, newPath) {
     await this.rpc.request({ storage_rename_request: { old_path: oldPath, new_path: newPath } });
   }
@@ -120,6 +133,23 @@ export class Flipper {
       }
     }
     throw lastError;
+  }
+
+  /**
+   * Asks the Flipper to check an update package on the SD card.
+   * Returns the result name ('OK' when it can be installed).
+   */
+  async prepareUpdate(manifestPath) {
+    const [res] = await this.rpc.request({ system_update_request: { update_manifest: manifestPath } });
+    const code = res.system_update_response?.code ?? 0;
+    return UPDATE_RESULTS[code] ?? `code ${code}`;
+  }
+
+  /** Restarts the Flipper; mode 'UPDATE' runs the prepared update. It disconnects, so no answer is awaited. */
+  async reboot(mode = 'OS') {
+    const modes = { OS: 0, DFU: 1, UPDATE: 2 };
+    this.rpc.request({ system_reboot_request: { mode: modes[mode] } }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   async startScreenStream() {
