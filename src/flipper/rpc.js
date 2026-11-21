@@ -34,6 +34,7 @@ export class FlipperRpc {
     this.nextId = 1;
     this.pending = new Map();
     this.listeners = new Set();
+    this.queue = Promise.resolve(); // one request at a time, like the official app
     this.decoder = new FrameDecoder((m) => this._onMessage(m));
     transport.onData = (bytes) => this.decoder.push(bytes);
   }
@@ -50,7 +51,16 @@ export class FlipperRpc {
    * Pass an array to send a multi-part request (e.g. a file write in chunks).
    * onPart(msg) runs for each response part, onSent(done, total) after each sent part.
    */
-  request(content, { onPart, onSent } = {}) {
+  request(content, opts = {}) {
+    // The Flipper handles one command at a time, and a multi-part upload must not be
+    // interrupted by another command, so requests wait for the previous one to finish.
+    const run = () => this._request(content, opts);
+    const p = this.queue.then(run, run);
+    this.queue = p.catch(() => {});
+    return p;
+  }
+
+  _request(content, { onPart, onSent } = {}) {
     const parts = Array.isArray(content) ? content : [content];
     const id = this._takeId();
     return new Promise((resolve, reject) => {
