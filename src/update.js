@@ -23,20 +23,29 @@ export function pickUpdate(release, currentBuild) {
   return { build, name: release.name || release.tag_name, url: apk.browser_download_url, notes: release.body || '' };
 }
 
-/** Looks for an update. Resolves to an update object or null; never throws. */
-export async function checkForUpdate({ force = false } = {}) {
-  if (!Capacitor.isNativePlatform()) return null;
+/**
+ * Looks for an update; never throws.
+ * Resolves to { update } when there is one, { upToDate, latest } when not,
+ * or { error } when GitHub couldn't be reached.
+ */
+export async function lookForUpdate({ force = false } = {}) {
+  if (!Capacitor.isNativePlatform()) return { error: 'only in the phone app' };
   try {
     const info = await App.getInfo();
     const res = await fetch(LATEST, { headers: { Accept: 'application/vnd.github+json' } });
-    if (!res.ok) return null;
-    const update = pickUpdate(await res.json(), Number(info.build) || 0);
-    if (!update) return null;
-    if (!force && readSkip() === update.build) return null;
-    return update;
-  } catch {
-    return null; // offline or GitHub unreachable: that's fine
+    if (!res.ok) return { error: `GitHub answered ${res.status}` };
+    const release = await res.json();
+    const update = pickUpdate(release, Number(info.build) || 0);
+    if (!update || (!force && readSkip() === update.build)) return { upToDate: true, latest: buildNumber(release) };
+    return { update };
+  } catch (e) {
+    return { error: 'no internet or GitHub unreachable' };
   }
+}
+
+/** Resolves to an update object or null. */
+export async function checkForUpdate(opts) {
+  return (await lookForUpdate(opts)).update || null;
 }
 
 /** Opens the APK download in the phone's browser; tapping the download installs it. */
