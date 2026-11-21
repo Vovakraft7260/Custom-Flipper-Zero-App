@@ -4,6 +4,7 @@ import { conn } from '../connection.js';
 import { http } from '../store/http.js';
 import { sdkFromInfo, listCategories, listApps, getApp, findUpdates, statusProblem } from '../store/catalog.js';
 import { installApp, installedApps, uninstallApp, fapsOnFlipper } from '../store/installer.js';
+import { remember, recall } from '../flipper/mirror.js';
 import { cached, cacheAge, writeCache } from '../store/cache.js';
 
 const PAGE = 40;
@@ -51,18 +52,42 @@ const sdkKey = () => (sdk ? `${sdk.target}-${sdk.api}` : 'any');
 const listKey = (o) => `list:${sdkKey()}:${o.categoryId ?? ''}:${o.search ?? ''}:${o.sort}:${o.offset}`;
 
 async function ensureBasics() {
-  if (sdk === undefined) sdk = sdkFromInfo(await conn.flipper.deviceInfo());
+  if (sdk === undefined) {
+    sdk = recall('sdk') ?? undefined;
+    const fresh = conn.flipper.deviceInfo().then((info) => {
+      sdk = sdkFromInfo(info);
+      remember('sdk', sdk);
+    });
+    if (sdk === undefined) await fresh;
+    else fresh.catch(() => {});
+  }
   if (!categories) {
     await cached(`cats:${sdkKey()}`, () => listCategories(http, sdk), (c) => (categories = c), { maxAgeMs: 6 * 3600 * 1000 });
   }
   if (!installed) {
-    installed = await installedApps(conn.flipper);
-    onFlipper = await fapsOnFlipper(conn.flipper).catch(() => new Map());
+    const saved = recall('apps');
+    if (saved) {
+      // Show what we saw last time right away, then check the Flipper quietly.
+      installed = saved.installed;
+      onFlipper = new Map(saved.onFlipper);
+      refreshInstalled().catch(() => {});
+    } else await refreshInstalled();
   }
   if (!prefetched) {
     prefetched = true;
     prefetchLists(); // in the background
   }
+}
+
+const saveApps = () => remember('apps', { installed, onFlipper: [...onFlipper] });
+
+/** Reads the installed apps from the Flipper (only changed files) and saves them on the phone. */
+async function refreshInstalled() {
+  const before = JSON.stringify([installed, [...onFlipper]]);
+  installed = await installedApps(conn.flipper);
+  onFlipper = await fapsOnFlipper(conn.flipper).catch(() => new Map());
+  saveApps();
+  if (before !== JSON.stringify([installed, [...onFlipper]])) rerender();
 }
 
 /** Quietly saves the first page of every category so they open instantly. */
@@ -236,6 +261,7 @@ function detailsBody(app, redraw) {
       const m = await installApp(conn.flipper, sdk, app, categoryName(app.categoryId), { previous: mine, step });
       installed = [...installed.filter((x) => x.uid !== app.id), m];
       onFlipper.set(app.alias, m.path);
+      saveApps();
       toast(mine ? `${app.name} updated` : `${app.name} installed`);
     });
   const remove = async () => {
@@ -244,6 +270,7 @@ function detailsBody(app, redraw) {
       await uninstallApp(conn.flipper, mine);
       installed = installed.filter((x) => x.uid !== app.id);
       onFlipper.delete(app.alias);
+      saveApps();
       toast(`${app.name} removed`);
     });
   };
@@ -324,6 +351,7 @@ function installedView() {
   (async () => {
     try {
       installed = await installedApps(conn.flipper);
+      saveApps();
       draw(true);
       if (installed.length) {
         await cached(`installed:${sdkKey()}:${installed.map((m) => m.uid).sort().join(',')}`,
@@ -387,6 +415,7 @@ function startUpdates(updates) {
           },
         });
         installed = [...installed.filter((x) => x.uid !== m.uid), m];
+        saveApps();
         updateQueue.done++;
       } catch (e) {
         updateQueue.failed.push(`${app.name} (${e.message})`);

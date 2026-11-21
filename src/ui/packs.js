@@ -2,7 +2,8 @@
 import { h, toast, showError, confirmAction, saveScroll, restoreScroll, moreButton } from './dom.js';
 import { conn } from '../connection.js';
 import { cached } from '../store/cache.js';
-import { PACKS_URL, expandPacks, packContents, framesOf, readArchive, installPack, installedPacks, removePack, readInstalledPack } from '../assets/packs.js';
+import { remember, recall } from '../flipper/mirror.js';
+import { PACKS_URL, expandPacks, packContents, framesOf, readArchive, installPack, installedPacks, removePack, readInstalledPack, packThumbFrame } from '../assets/packs.js';
 
 let stack = []; // { type: 'pack', key } | { type: 'inside', key } | { type: 'local', pack } | { type: 'flipper', name }
 const scrollMemo = [];
@@ -10,6 +11,7 @@ let rerender = () => {};
 let packs = null;
 let onFlipper = null; // folder names in /ext/asset_packs
 const downloaded = new Map(); // key -> pack contents
+const thumbs = new Map(); // installed pack name -> Promise<frame|null>
 let busy = null;
 
 export function openPacks() {
@@ -47,7 +49,18 @@ export function packsView(rerenderTab) {
         if (root.isConnected) rerender();
       }, { maxAgeMs: 6 * 3600 * 1000 });
     }
-    if (!onFlipper) onFlipper = conn.state === 'online' ? await installedPacks(conn.flipper) : [];
+    if (!onFlipper && conn.state === 'online') {
+      const saved = recall('packs');
+      const fresh = installedPacks(conn.flipper).then((list) => {
+        const changed = JSON.stringify(list) !== JSON.stringify(onFlipper);
+        onFlipper = list;
+        remember('packs', list);
+        if (changed && saved && root.isConnected) rerender();
+      });
+      if (saved) onFlipper = saved; // show last known list now, check quietly
+      else await fresh;
+    }
+    onFlipper ??= [];
     const top = stack[stack.length - 1];
     root.replaceChildren(
       !top
@@ -132,11 +145,22 @@ function home() {
   );
 }
 
+/** Small picture of an installed pack (its first animation), read once and kept on the phone. */
+function installedThumb(name) {
+  const slot = h('div', { class: 'pack-thumb' });
+  if (!thumbs.has(name)) thumbs.set(name, packThumbFrame(conn.flipper, name).catch(() => null));
+  thumbs.get(name).then((frame) => {
+    if (frame) slot.replaceChildren(pixelCanvas([frame], 1, 1));
+    else slot.textContent = '✓';
+  });
+  return slot;
+}
+
 function installedCard(name) {
   return h(
     'div',
-    { class: 'card-item', role: 'button', onclick: () => go({ type: 'flipper', name }) },
-    h('span', { class: 'card-icon' }, '✓'),
+    { class: 'card-item pack-card', role: 'button', onclick: () => go({ type: 'flipper', name }) },
+    installedThumb(name),
     h('span', { class: 'card-name' }, name),
     h('span', { class: 'card-sub muted' }, 'tap to look inside'),
     moreButton(name, [
@@ -150,6 +174,8 @@ function installedCard(name) {
             await removePack(conn.flipper, name);
             downloaded.delete(`flipper/${name}`);
             onFlipper = onFlipper.filter((n) => n !== name);
+            remember('packs', onFlipper);
+            thumbs.delete(name);
             toast('pack removed');
             rerender();
           } catch (e) {
@@ -186,6 +212,8 @@ function installButtons(getPack, label) {
       await installPack(conn.flipper, pack, { step: (t) => (status.textContent = t) });
       downloaded.delete(`flipper/${pack.name}`);
       onFlipper = [...new Set([...(onFlipper ?? []), pack.name])].sort();
+      remember('packs', onFlipper);
+      thumbs.delete(pack.name);
       status.textContent = '';
       toast(`Installed! On the Flipper: Momentum settings › Interface › Graphics › ${pack.name}`, { ms: 7000 });
       rerender();

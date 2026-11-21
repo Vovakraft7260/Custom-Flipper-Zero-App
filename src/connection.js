@@ -2,6 +2,7 @@
 import { BleTransport } from './flipper/ble.js';
 import { Flipper } from './flipper/api.js';
 import { demoFlipper } from './flipper/demo.js';
+import { setMirrorDevice } from './flipper/mirror.js';
 
 const listeners = new Set();
 export const conn = { flipper: null, transport: null, name: '', state: 'offline', lastError: null };
@@ -27,6 +28,7 @@ export async function connectTo(device) {
   if (conn.transport) await disconnect();
   conn.state = 'connecting';
   conn.name = device.name || device.id;
+  setMirrorDevice(conn.name);
   conn.lastError = null;
   emit();
   const transport = new BleTransport(device.id);
@@ -69,6 +71,7 @@ export async function connectDemo() {
   conn.transport = transport;
   conn.flipper = new Flipper(transport);
   conn.name = 'Flipper Rig0 (demo)';
+  setMirrorDevice(conn.name);
   conn.state = 'online';
   conn.lastError = null;
   emit();
