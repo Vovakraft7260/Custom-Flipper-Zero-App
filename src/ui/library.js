@@ -1,5 +1,5 @@
 // Signal library: browse community collections and send files to the Flipper.
-import { h, toast, showError, sheet, confirmAction } from './dom.js';
+import { h, saveScroll, restoreScroll, toast, showError, sheet, confirmAction } from './dom.js';
 import { conn } from '../connection.js';
 import { RpcError } from '../flipper/rpc.js';
 import { parseInfrared, parseSubGhz, keyFileSummary } from '../flipper/flipperformat.js';
@@ -24,6 +24,7 @@ export function libraryBack() {
   stack.pop();
   search = '';
   rerender();
+  restoreScroll(scrollMemo[stack.length] ?? 0);
   return true;
 }
 
@@ -36,10 +37,14 @@ export function libraryView(rerenderTab) {
   return root;
 }
 
+const scrollMemo = []; // list position of each screen, to return to it on back
+
 function go(next) {
+  scrollMemo[stack.length] = saveScroll();
   stack.push(next);
   search = '';
   rerender();
+  restoreScroll(0);
 }
 
 function card(icon, name, sub, onclick) {

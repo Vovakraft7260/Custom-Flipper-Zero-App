@@ -95,3 +95,31 @@ export function formatBytes(n) {
   if (n < 1024 ** 3) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${(n / 1024 ** 3).toFixed(2)} GB`;
 }
+
+// ---------- keep the list position when going back ----------
+const scrollBox = () => document.getElementById('view');
+
+export function saveScroll() {
+  return scrollBox()?.scrollTop ?? 0;
+}
+
+/** Scrolls back to y, retrying briefly while the list is still loading. */
+let scrollGen = 0;
+export function restoreScroll(y) {
+  const el = scrollBox();
+  if (!el) return;
+  const gen = ++scrollGen; // a newer restore cancels this one
+  let tries = 0;
+  const tick = () => {
+    if (gen !== scrollGen) return;
+    el.scrollTop = y;
+    if (Math.abs(el.scrollTop - y) > 2 && tries++ < 60) setTimeout(tick, 50);
+  };
+  requestAnimationFrame(tick);
+  // Stop fighting the user: any touch or wheel ends the retries.
+  const stop = () => {
+    if (gen === scrollGen) scrollGen++;
+  };
+  el.addEventListener('touchstart', stop, { once: true, passive: true });
+  el.addEventListener('wheel', stop, { once: true, passive: true });
+}

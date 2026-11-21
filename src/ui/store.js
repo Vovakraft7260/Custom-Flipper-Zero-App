@@ -1,5 +1,5 @@
 // App store: browse the Flipper app catalog, install / update / remove apps.
-import { h, toast, showError, confirmAction } from './dom.js';
+import { h, saveScroll, restoreScroll, toast, showError, confirmAction } from './dom.js';
 import { conn } from '../connection.js';
 import { http } from '../store/http.js';
 import { sdkFromInfo, listCategories, listApps, getApp, findUpdates, statusProblem } from '../store/catalog.js';
@@ -34,12 +34,17 @@ export function storeBack() {
   if (!stack.length) return false;
   stack.pop();
   rerender();
+  restoreScroll(scrollMemo[stack.length] ?? 0);
   return true;
 }
 
+const scrollMemo = []; // list position of each screen, to return to it on back
+
 function go(next) {
+  scrollMemo[stack.length] = saveScroll();
   stack.push(next);
   rerender();
+  restoreScroll(0);
 }
 
 const sdkKey = () => (sdk ? `${sdk.target}-${sdk.api}` : 'any');
@@ -186,8 +191,13 @@ function appList(top) {
     more.disabled = false;
     more.textContent = 'load more';
   };
-  more.onclick = () => load(pages.length);
-  load(0);
+  more.onclick = async () => {
+    await load(pages.length);
+    top.pages = pages.length; // so going back shows the same pages
+  };
+  (async () => {
+    for (let i = 0; i < (top.pages || 1); i++) await load(i);
+  })();
   const picker = categoryPicker(top.categoryId, (id) => {
     stack[stack.length - 1] = { ...top, categoryId: id || undefined };
     rerender();
