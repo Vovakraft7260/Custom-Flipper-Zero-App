@@ -1,0 +1,11 @@
+{
+  "_note": "Community collections shown in the app's signal library. Rebuilt weekly by .github/workflows/library-index.yml.",
+  "sources": [
+    { "id": "irdb", "name": "Flipper-IRDB", "repo": "Lucaslhm/Flipper-IRDB", "license": "CC0-1.0", "exts": [".ir"] },
+    { "id": "uber-subghz", "name": "UberGuidoZ Sub-GHz", "repo": "UberGuidoZ/Flipper", "license": "GPL-3.0", "dir": "Sub-GHz", "exts": [".sub"], "exclude": "(^|/)jamm" },
+    { "id": "uber-nfc", "name": "UberGuidoZ NFC", "repo": "UberGuidoZ/Flipper", "license": "GPL-3.0", "dir": "NFC", "exts": [".nfc"] },
+    { "id": "amiibo", "name": "Amiibo collection", "repo": "Gioman101/FlipperAmiibo", "license": "unknown", "exts": [".nfc"] },
+    { "id": "uber-badusb", "name": "UberGuidoZ Bad USB", "repo": "UberGuidoZ/Flipper", "license": "GPL-3.0", "dir": "BadUSB", "exts": [".txt"], "exclude": "(^|/)(readme|license)[^/]*$" },
+    { "id": "jakoby", "name": "Jakoby Bad USB", "repo": "I-Am-Jakoby/Flipper-Zero-BadUSB", "license": "unknown", "dir": "Payloads", "exts": [".txt"] }
+  ]
+}
