@@ -6,6 +6,7 @@ import { RpcError } from '../flipper/rpc.js';
 import { openEditor } from './editor.js';
 import { filesView, filesBack, openFiles } from './files.js';
 import { archiveView, itemActions, resetArchive } from './archive.js';
+import { packsView, packsBack, openPacks, resetPacks } from './packs.js';
 import { storeView, storeBack, openStore, resetStore } from './store.js';
 import { libraryView, libraryBack, openLibrary } from './library.js';
 import { tvRemoteView, tvRemoteBack, openTvRemote, closeTvRemote } from './tvremote.js';
@@ -58,6 +59,7 @@ const TOOLS = [
   { id: 'ibutton', icon: '◎', label: 'ibutton', kind: 'archive', group: 'saved' },
   { id: 'badusb', icon: '⌨', label: 'bad usb', kind: 'script', group: 'saved' },
   { id: 'store', icon: '⬇', label: 'app store', kind: 'store', group: 'tools' },
+  { id: 'packs', icon: '🐬', label: 'asset packs', kind: 'packs', group: 'tools' },
   { id: 'library', icon: '🌐', label: 'signal library', kind: 'library', group: 'tools' },
   { id: 'tvremote', icon: '📺', label: 'tv remote', kind: 'tvremote', group: 'tools' },
   { id: 'js', icon: '{ }', label: 'js scripts', kind: 'script', group: 'tools' },
@@ -100,6 +102,7 @@ export function toolsView(rerender) {
     ),
     {
       store: () => storeView(rerenderTab),
+      packs: () => packsView(rerenderTab),
       library: () => libraryView(rerenderTab),
       files: () => filesView(),
       tvremote: () => tvRemoteView(rerenderTab),
@@ -117,6 +120,7 @@ export function toolsBack() {
   if (tool.kind === 'tvremote' && tvRemoteBack()) return true;
   if (tool.kind === 'library' && libraryBack()) return true;
   if (tool.kind === 'store' && storeBack()) return true;
+  if (tool.kind === 'packs' && packsBack()) return true;
   closeTool();
   return true;
 }
@@ -125,6 +129,7 @@ export function resetTools() {
   openTool = null;
   resetArchive();
   resetStore();
+  resetPacks();
 }
 
 function closeTool() {
@@ -152,6 +157,8 @@ function tileGrid(list) {
             if (t.kind === 'files') openFiles(t.home);
             else if (t.kind === 'tvremote') openTvRemote();
             else if (t.kind === 'library') openLibrary();
+            else if (t.kind === 'store') openStore();
+            else if (t.kind === 'packs') openPacks();
             rerenderTab();
           },
         },
