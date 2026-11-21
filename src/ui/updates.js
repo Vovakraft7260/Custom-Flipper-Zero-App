@@ -2,7 +2,7 @@
 import { h, sheet, toast } from './dom.js';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { checkForUpdate, openUpdate, skipUpdate } from '../update.js';
+import { checkForUpdate, lookForUpdate, openUpdate, skipUpdate } from '../update.js';
 
 export async function offerUpdate(update) {
   const notes = update.notes.trim().split('\n').slice(0, 6).join('\n');
@@ -35,11 +35,12 @@ export function updatesCard() {
     onclick: async () => {
       btn.disabled = true;
       btn.textContent = 'checking…';
-      const update = await checkForUpdate({ force: true });
+      const r = await lookForUpdate({ force: true });
       btn.disabled = false;
       btn.textContent = 'check for updates';
-      if (update) offerUpdate(update);
-      else toast("You're up to date (or offline).");
+      if (r.update) offerUpdate(r.update);
+      else if (r.upToDate) toast(`You're on the newest version${r.latest ? ` (build ${r.latest})` : ''}.`);
+      else toast(`Couldn't check for updates: ${r.error}.`, { error: true });
     },
   }, 'check for updates');
   return h('div', { class: 'card', style: 'margin-top:24px' }, version, h('div', { style: 'margin-top:8px' }, btn));
