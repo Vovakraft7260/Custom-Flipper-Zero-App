@@ -102,6 +102,16 @@ export class BleTransport {
     await BleClient.startNotifications(id, SERIAL_SERVICE, OVERFLOW_CHAR, (dv) => this._setRemaining(dv));
   }
 
+  /** Background: slower, cheaper radio link. Foreground: fast link. */
+  async setPowerSaving(on) {
+    if (!this.connected) return;
+    try {
+      await BleClient.requestConnectionPriority(this.deviceId, on ? ConnectionPriority.CONNECTION_PRIORITY_BALANCED : ConnectionPriority.CONNECTION_PRIORITY_HIGH);
+    } catch {
+      /* optional */
+    }
+  }
+
   async disconnect() {
     this.connected = false;
     try {

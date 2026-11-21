@@ -45,6 +45,11 @@ export function remoteView(rerender) {
     return h('div', {}, h('h2', {}, 'remote'), h('p', { class: 'muted' }, 'Connect your Flipper on the device tab first.'));
   }
   const f = conn.flipper;
+  // Drawn again while open: drop the old screen listener first, or every
+  // redraw would add one more that decodes each frame (wastes battery).
+  const previous = stopCurrent;
+  stopCurrent = null;
+  previous?.();
   const canvas = h('canvas', { class: 'screen', width: SCREEN_W, height: SCREEN_H });
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(SCREEN_W, SCREEN_H);

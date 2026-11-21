@@ -55,6 +55,17 @@ function goBack() {
 
 if (Capacitor.isNativePlatform()) {
   App.addListener('backButton', goBack);
+  // Save battery when the app isn't on screen: stop the live Flipper screen
+  // (it sends many frames a second) and slow the Bluetooth link down.
+  App.addListener('appStateChange', async ({ isActive }) => {
+    if (!isActive) {
+      if (current === 'remote') await stopRemote();
+      await conn.transport?.setPowerSaving?.(true);
+    } else {
+      await conn.transport?.setPowerSaving?.(false);
+      if (current === 'remote') render(); // starts the live screen again
+    }
+  });
 }
 // Browser preview: Escape acts as the back button.
 window.addEventListener('keydown', (e) => e.key === 'Escape' && goBack());

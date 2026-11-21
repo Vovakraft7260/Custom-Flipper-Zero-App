@@ -96,6 +96,7 @@ export function pixelCanvas(frames, fps = 4, scale = 3) {
   if (frames.length > 1) {
     const timer = setInterval(() => {
       if (!c.isConnected && i > 0) return clearInterval(timer);
+      if (document.hidden || !c.isConnected) return; // don't animate off screen
       i++;
       draw();
     }, 1000 / Math.max(1, Math.min(fps, 30)));
