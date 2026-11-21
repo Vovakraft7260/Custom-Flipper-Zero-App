@@ -60,7 +60,7 @@ if (Capacitor.isNativePlatform()) {
   App.addListener('appStateChange', async ({ isActive }) => {
     if (!isActive) {
       if (current === 'remote') await stopRemote();
-      await conn.transport?.setPowerSaving?.(true);
+      if (!conn.busy) await conn.transport?.setPowerSaving?.(true); // a firmware copy keeps the fast link
     } else {
       await conn.transport?.setPowerSaving?.(false);
       if (current === 'remote') render(); // starts the live screen again

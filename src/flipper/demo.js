@@ -1,4 +1,5 @@
 // A pretend Flipper: answers RPC requests like the real one.
+import { md5 } from '../firmware/md5.js';
 // Used by the tests, and by the "demo" button in the browser preview.
 import { encodeMain } from './proto.js';
 import { FrameDecoder } from './framing.js';
@@ -108,6 +109,12 @@ export class FakeFlipper {
         if (this.files.has(from)) (this.files.set(to, this.files.get(from)), this.files.delete(from));
         if (this.dirs.has(from)) (this.dirs.add(to), this.dirs.delete(from));
         this.reply({ command_id: id, empty: {} });
+        break;
+      }
+      case 'storage_md5sum_request': {
+        const data = this.files.get(m.storage_md5sum_request.path);
+        if (!data) this.reply({ command_id: id, command_status: 2, empty: {} });
+        else this.reply({ command_id: id, storage_md5sum_response: { md5sum: md5(data) } });
         break;
       }
       case 'gui_send_input_event_request':
