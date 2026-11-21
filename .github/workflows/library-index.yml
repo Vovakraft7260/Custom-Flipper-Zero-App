@@ -8,7 +8,7 @@ on:
     - cron: '17 4 * * 1' # Mondays
   push:
     branches: [main]
-    paths: ['scripts/library-sources.json', 'scripts/build-library-index.mjs', 'scripts/build-packs-index.mjs', 'scripts/community-packs.mjs', 'asset-packs/**']
+    paths: ['scripts/library-sources.json', 'scripts/build-library-index.mjs', 'scripts/build-packs-index.mjs', 'scripts/community-packs.mjs', 'asset-packs/**', '.github/workflows/library-index.yml']
   workflow_dispatch:
 
 permissions:
