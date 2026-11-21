@@ -82,15 +82,17 @@ export function setOnRunScript(fn) {
 
 export function toolsView(rerender) {
   rerenderTab = rerender;
-  // The library works without a Flipper (browse now, send later).
-  if (conn.state !== 'online' && openTool !== 'library') {
+  // The library works without a Flipper (browse now, send later),
+  // and firmware installs use their own USB cable connection.
+  const noFlipperNeeded = ['library', 'firmware'];
+  if (conn.state !== 'online' && !noFlipperNeeded.includes(openTool)) {
     openTool = null;
     return h(
       'div',
       {},
       h('h2', {}, 'tools'),
       h('p', { class: 'muted' }, 'Connect your Flipper on the device tab for everything else.'),
-      tileGrid(TOOLS.filter((t) => t.id === 'library')),
+      tileGrid(TOOLS.filter((t) => noFlipperNeeded.includes(t.id))),
     );
   }
   if (!openTool) return grid();
@@ -133,7 +135,13 @@ export function toolsBack() {
   return true;
 }
 
+/** True while the firmware screen works over USB, which doesn't care about Bluetooth. */
+export function usbToolOpen() {
+  return openTool === 'firmware';
+}
+
 export function resetTools() {
+  if (usbToolOpen()) return; // a USB firmware install keeps going when Bluetooth changes
   openTool = null;
   resetArchive();
   resetStore();

@@ -8,6 +8,7 @@ import { cached } from '../store/cache.js';
 import { saveToPhone, SAVE_FOLDER } from './save.js';
 import { FIRMWARES, loadChannels, currentFirmware } from '../firmware/sources.js';
 import { readPackage, installPackage, sha256Hex } from '../firmware/install.js';
+import { connectUsb, usbAvailable } from '../flipper/usb.js';
 
 const FW_DIR = `${SAVE_FOLDER}/firmware`;
 
@@ -18,6 +19,28 @@ let channels = new Map(); // fw id -> { channels, from } | Error
 let picked = new Map(); // fw id -> channel id
 let current = null; // what the Flipper runs
 let job = null;
+let usb = null; // { flipper, transport, name } while plugged in
+
+// Firmware goes over USB only (much faster and steadier than Bluetooth).
+// The browser demo stands in for a plugged-in Flipper.
+const isDemo = () => conn.state === 'online' && /\(demo\)/.test(conn.name);
+const target = () => usb?.flipper ?? (isDemo() ? conn.flipper : null);
+
+async function plugIn() {
+  try {
+    usb = await connectUsb();
+    usb.transport.onDisconnect = () => {
+      usb = null;
+      current = null;
+      rerender();
+    };
+    current = null;
+    toast('Flipper connected by USB');
+  } catch (e) {
+    showError(e);
+  }
+  rerender();
+}
 
 export function openFirmware() {
   stack = [];
@@ -74,14 +97,29 @@ async function readSaved(name) {
 
 // ---------- screens ----------
 
+function usbCard() {
+  if (target()) {
+    return h('p', { class: 'tip' }, usb ? `🔌 Connected by USB (${usb.name}). Keep the cable in until the update is done.` : '🔌 Demo Flipper stands in for USB here.');
+  }
+  if (!usbAvailable()) return h('p', { class: 'tip' }, 'Firmware installs use a USB-C cable and need the Android app.');
+  return h(
+    'div',
+    { class: 'tip' },
+    h('p', {}, 'Firmware installs go over a USB-C cable: fast and steady.'),
+    h('p', { class: 'muted' }, '1. Plug the Flipper into your phone (a data cable, not charge-only).'),
+    h('p', { class: 'muted' }, '2. Tap connect and allow USB access.'),
+    h('button', { class: 'primary', style: 'width:100%', onclick: plugIn }, '🔌 connect by USB'),
+  );
+}
+
 function home() {
-  const now = h('p', { class: 'muted' }, 'checking your firmware…');
+  const now = h('p', { class: 'muted' }, target() ? 'checking your firmware…' : '');
   const showCurrent = () => {
     now.replaceChildren('On your Flipper: ', h('b', {}, current.label || 'unknown'));
   };
   if (current) showCurrent();
-  else
-    conn.flipper
+  else if (target())
+    target()
       .deviceInfo()
       .then((info) => {
         current = currentFirmware(info);
@@ -138,6 +176,7 @@ function home() {
   return h(
     'div',
     {},
+    usbCard(),
     now,
     h('p', { class: 'muted' }, 'Pick a firmware, then a channel. Your saved files on the SD card stay.'),
     list,
@@ -148,7 +187,7 @@ function home() {
 }
 
 function fwPage(fw) {
-  const root = h('div', {}, h('div', { class: 'app-name big' }, fw.name), h('p', { class: 'muted' }, fw.about));
+  const root = h('div', {}, h('div', { class: 'app-name big' }, fw.name), h('p', { class: 'muted' }, fw.about), !target() && usbCard());
   const body = h('div', {}, h('p', { class: 'muted' }, 'loading versions…'));
   root.append(body);
   const draw = () => {
@@ -213,15 +252,15 @@ function fromServer(fw, ch, v) {
 }
 
 async function confirmInstall(source) {
-  if (conn.state !== 'online') return toast('Connect your Flipper first.');
+  if (!target()) return toast('Plug the Flipper in by USB and tap connect first.');
   const ok = await sheet(
     `Install ${source.label}?`,
     [{ label: '⇩ install', class: 'primary', value: 'go' }],
     h(
       'p',
       { class: 'muted', style: 'white-space:pre-wrap' },
-      'Keep the app open and the Flipper close to the phone. Copying takes about 10–30 minutes over Bluetooth.\n\n' +
-        'If the connection drops, nothing breaks: reconnect and install again, it continues where it stopped. ' +
+      'Keep the app open and the cable in. Copying over USB takes a minute or two.\n\n' +
+        'If the cable comes out, nothing breaks: plug it back in and install again, it continues where it stopped. ' +
         'The Flipper only updates once every file checked out.\n\nYour saved files stay. A backup first (Tools › sd backup) never hurts.',
     ),
   );
@@ -232,14 +271,13 @@ async function confirmInstall(source) {
 async function run(source) {
   job = { title: `Installing ${source.label}`, line: 'getting ready…', sent: 0, total: 0, stop: false, finished: false };
   go({ type: 'work' });
-  conn.busy = true; // keep Bluetooth fast while copying
   try {
     const bytes = await source.load((t) => ((job.line = t), updateWork()));
     job.line = 'opening the package…';
     updateWork();
     const pkg = await readPackage(bytes);
     job.total = pkg.bytes;
-    await installPackage(conn.flipper, pkg, {
+    await installPackage(target(), pkg, {
       progress: (p) => {
         job.sent = p.sent;
         job.line = `${p.step === 'checking' ? 'checking' : 'copying'} ${p.file.split('/').pop()} · ${formatBytes(p.sent)} of ${formatBytes(p.total)}`;
@@ -250,14 +288,13 @@ async function run(source) {
     job.title = 'Your Flipper is updating ✓';
     job.result = [
       'All files arrived and checked out. The Flipper restarted into its updater and shows the progress on its screen.',
-      'It takes a few minutes and restarts by itself when done. Then reconnect on the device tab.',
+      'It takes a few minutes and restarts by itself when done. You can unplug it once it shows the normal screen again.',
     ];
     current = null;
   } catch (e) {
     job.title = job.stop ? 'Stopped' : "Couldn't finish";
     job.result = [e.message, 'Your Flipper was not changed. Install again to continue where it stopped.'];
   }
-  conn.busy = false;
   job.finished = true;
   rerender();
 }
@@ -286,7 +323,7 @@ function workPage() {
     h('h2', {}, job.title),
     workEls.bar,
     workEls.line,
-    h('p', { class: 'tip' }, 'Keep the app open and the Flipper close by.'),
+    h('p', { class: 'tip' }, 'Keep the app open and the cable plugged in.'),
     h('button', { class: 'danger', style: 'width:100%', onclick: () => ((job.stop = true), (job.line = 'stopping after this file…'), updateWork()) }, 'stop'),
   );
 }

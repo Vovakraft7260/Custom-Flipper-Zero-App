@@ -37,6 +37,9 @@
         </provider>
     </application>
 
+    <!-- Flipper over a USB-C cable (phone as USB host) -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
