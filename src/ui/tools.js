@@ -6,6 +6,7 @@ import { RpcError } from '../flipper/rpc.js';
 import { openEditor } from './editor.js';
 import { filesView, filesBack, openFiles } from './files.js';
 import { archiveView, itemActions, resetArchive } from './archive.js';
+import { libraryView, libraryBack, openLibrary } from './library.js';
 import { tvRemoteView, tvRemoteBack, openTvRemote, closeTvRemote } from './tvremote.js';
 
 const BAD_USB_TEMPLATE = `REM New Bad USB script
@@ -55,6 +56,7 @@ const TOOLS = [
   { id: 'ir', icon: '⟿', label: 'infrared', kind: 'archive', group: 'saved' },
   { id: 'ibutton', icon: '◎', label: 'ibutton', kind: 'archive', group: 'saved' },
   { id: 'badusb', icon: '⌨', label: 'bad usb', kind: 'script', group: 'saved' },
+  { id: 'library', icon: '🌐', label: 'signal library', kind: 'library', group: 'tools' },
   { id: 'tvremote', icon: '📺', label: 'tv remote', kind: 'tvremote', group: 'tools' },
   { id: 'js', icon: '{ }', label: 'js scripts', kind: 'script', group: 'tools' },
   { id: 'apps', icon: '▦', label: 'apps (.fap)', kind: 'files', home: '/ext/apps', group: 'tools' },
@@ -72,8 +74,16 @@ export function setOnRunScript(fn) {
 
 export function toolsView(rerender) {
   rerenderTab = rerender;
-  if (conn.state !== 'online') {
-    return h('div', {}, h('h2', {}, 'tools'), h('p', { class: 'muted' }, 'Connect your Flipper on the device tab first.'));
+  // The library works without a Flipper (browse now, send later).
+  if (conn.state !== 'online' && openTool !== 'library') {
+    openTool = null;
+    return h(
+      'div',
+      {},
+      h('h2', {}, 'tools'),
+      h('p', { class: 'muted' }, 'Connect your Flipper on the device tab for everything else.'),
+      tileGrid(TOOLS.filter((t) => t.id === 'library')),
+    );
   }
   if (!openTool) return grid();
   const tool = TOOLS.find((t) => t.id === openTool);
@@ -86,13 +96,13 @@ export function toolsView(rerender) {
       h('button', { onclick: closeTool }, '← tools'),
       h('span', { class: 'muted' }, tool.label),
     ),
-    tool.kind === 'files'
-      ? filesView()
-      : tool.kind === 'tvremote'
-        ? tvRemoteView(rerenderTab)
-        : tool.kind === 'archive'
-          ? archiveView(tool.id)
-          : scriptView(SCRIPT_TOOLS[tool.id]),
+    {
+      library: () => libraryView(rerenderTab),
+      files: () => filesView(),
+      tvremote: () => tvRemoteView(rerenderTab),
+      archive: () => archiveView(tool.id),
+      script: () => scriptView(SCRIPT_TOOLS[tool.id]),
+    }[tool.kind](),
   );
 }
 
@@ -102,6 +112,7 @@ export function toolsBack() {
   const tool = TOOLS.find((t) => t.id === openTool);
   if (tool.kind === 'files' && filesBack()) return true;
   if (tool.kind === 'tvremote' && tvRemoteBack()) return true;
+  if (tool.kind === 'library' && libraryBack()) return true;
   closeTool();
   return true;
 }
@@ -118,28 +129,32 @@ function closeTool() {
 }
 
 function grid() {
-  const tiles = (group) =>
-    h(
-      'div',
-      { class: 'tool-grid' },
-      TOOLS.filter((t) => t.group === group).map((t) =>
-        h(
-          'button',
-          {
-            class: 'tool',
-            onclick: () => {
-              openTool = t.id;
-              if (t.kind === 'files') openFiles(t.home);
-              else if (t.kind === 'tvremote') openTvRemote();
-              rerenderTab();
-            },
-          },
-          h('span', { class: 'tool-icon' }, t.icon),
-          h('span', { class: 'tool-label' }, t.label),
-        ),
-      ),
-    );
+  const tiles = (group) => tileGrid(TOOLS.filter((t) => t.group === group));
   return h('div', {}, h('h2', {}, 'saved on flipper'), tiles('saved'), h('h2', {}, 'tools'), tiles('tools'));
+}
+
+function tileGrid(list) {
+  return h(
+    'div',
+    { class: 'tool-grid' },
+    list.map((t) =>
+      h(
+        'button',
+        {
+          class: 'tool',
+          onclick: () => {
+            openTool = t.id;
+            if (t.kind === 'files') openFiles(t.home);
+            else if (t.kind === 'tvremote') openTvRemote();
+            else if (t.kind === 'library') openLibrary();
+            rerenderTab();
+          },
+        },
+        h('span', { class: 'tool-icon' }, t.icon),
+        h('span', { class: 'tool-label' }, t.label),
+      ),
+    ),
+  );
 }
 
 // ---------- script tools (Bad USB, JS): cards, tap to edit and run ----------
