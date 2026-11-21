@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { conn, onConnChange } from './connection.js';
 import { popBack } from './ui/dom.js';
 import { deviceView } from './ui/device.js';
-import { toolsView, toolsBack, resetTools, setOnRunScript } from './ui/tools.js';
+import { toolsView, toolsBack, resetTools, setOnRunScript, usbToolOpen } from './ui/tools.js';
 import { resetFiles } from './ui/files.js';
 import { remoteView, stopRemote } from './ui/remote.js';
 import { checkOnStart } from './ui/updates.js';
@@ -60,7 +60,7 @@ if (Capacitor.isNativePlatform()) {
   App.addListener('appStateChange', async ({ isActive }) => {
     if (!isActive) {
       if (current === 'remote') await stopRemote();
-      if (!conn.busy) await conn.transport?.setPowerSaving?.(true); // a firmware copy keeps the fast link
+      await conn.transport?.setPowerSaving?.(true);
     } else {
       await conn.transport?.setPowerSaving?.(false);
       if (current === 'remote') render(); // starts the live screen again
@@ -80,7 +80,8 @@ onConnChange((c) => {
     if (c.state === 'offline') {
       stopRemote();
       tabHistory.length = 0;
-      if (current !== 'device') show('device', { remember: false });
+      if (current === 'tools' && usbToolOpen()) render(); // firmware over USB: stay put
+      else if (current !== 'device') show('device', { remember: false });
       else render();
     } else if (c.state === 'online') {
       render();
