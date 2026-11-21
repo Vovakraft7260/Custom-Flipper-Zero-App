@@ -80,3 +80,17 @@ test('installs, lists and removes an app on the Flipper', async () => {
   assert.equal(fake.files.has(dest), false);
   assert.deepEqual(await installedApps(f), []);
 });
+
+test('app list falls back to other request styles when the catalog says 400', async () => {
+  const tried = [];
+  const http = {
+    async json(url, opts = {}) {
+      tried.push(`${opts.method ?? 'GET'} ${url.split('/api')[1]} ${opts.body?.api ?? ''}`);
+      if (opts.method === 'POST' && opts.body.api) throw Object.assign(new Error('Server answered 400'), { status: 400 });
+      return [shortApp];
+    },
+  };
+  const list = await listApps(http, { target: 'f7', api: '87.1' }, {});
+  assert.equal(list[0].name, 'Snake');
+  assert.deepEqual(tried, ['POST /v0/1/application 87.1', 'POST /v0/1/application ']);
+});
