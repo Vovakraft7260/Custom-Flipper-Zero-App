@@ -1,7 +1,7 @@
 // Backup tool: copy the Flipper's SD card into one .zip on the phone, and put it back.
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { h, toast, showError, confirmAction, formatBytes, sheet } from './dom.js';
+import { h, toast, showError, confirmAction, formatBytes, sheet, moreButton } from './dom.js';
 import { conn } from '../connection.js';
 import { saveToPhone, SAVE_FOLDER } from './save.js';
 import { base64ToBytes } from '../store/http.js';
@@ -78,22 +78,21 @@ function home() {
               { class: 'card-item' },
               h('span', { class: 'card-name' }, f.name.replace(/^flipper-backup-/, '').replace(/\.zip$/, '')),
               h('span', { class: 'card-sub muted' }, formatBytes(f.size)),
+              moreButton(f.name, [
+                {
+                  label: 'delete this backup…',
+                  danger: true,
+                  run: async () => {
+                    if (!(await confirmAction(`Delete the backup ${f.name} from your phone?`, 'delete', true))) return;
+                    await Filesystem.deleteFile({ path: `${BACKUP_DIR}/${f.name}`, directory: Directory.Documents }).catch(showError);
+                    rerender();
+                  },
+                },
+              ]),
               h(
                 'div',
                 { class: 'row' },
                 h('button', { class: 'primary', onclick: () => startRestore(f.name, () => readSaved(f.name)) }, 'restore'),
-                h(
-                  'button',
-                  {
-                    class: 'danger',
-                    onclick: async () => {
-                      if (!(await confirmAction(`Delete the backup ${f.name} from your phone?`, 'delete', true))) return;
-                      await Filesystem.deleteFile({ path: `${BACKUP_DIR}/${f.name}`, directory: Directory.Documents }).catch(showError);
-                      rerender();
-                    },
-                  },
-                  'delete',
-                ),
               ),
             ),
           )

@@ -74,3 +74,50 @@ test('reads a real Momentum pack and decodes its frames', async () => {
   assert.equal(framesOf(pack.icons[0])[0].pixels.reduce((a, b) => a + b), 8);
   assert.ok(pack.files.some((f) => f.path === 'Anims/manifest.txt'));
 });
+
+test('builds community packs from folders and zips, with previews', async () => {
+  const { buildCommunityPacks } = await import('../scripts/community-packs.mjs');
+  const { packContents } = await import('../src/assets/packs.js');
+  const dir = mkdtempSync(join(tmpdir(), 'comm-'));
+  const src = join(dir, 'asset-packs');
+  const pack = join(src, 'Cool Pack');
+  mkdirSync(join(pack, 'Anims', 'Wave'), { recursive: true });
+  writeFileSync(join(pack, 'Anims', 'manifest.txt'), 'Filetype: Flipper Animation Manifest\n');
+  writeFileSync(join(pack, 'Anims', 'Wave', 'meta.txt'), 'Width: 8\nHeight: 1\nFrame rate: 2\nFrames order: 0\n');
+  writeFileSync(join(pack, 'Anims', 'Wave', 'frame_0.bm'), Buffer.from([0, 0b1]));
+  writeFileSync(join(pack, 'pack.json'), JSON.stringify({ author: 'me', description: 'hi' }));
+  // A second pack uploaded as a zip with the files at the top level.
+  writeFileSync(
+    join(src, 'Zipped One.zip'),
+    writeZip([{ path: 'Icons/Passport/face_8x1.bmx', data: new Uint8Array([8, 0, 0, 0, 1, 0, 0, 0, 0, 0xff]) }]),
+  );
+  writeFileSync(join(src, 'README.md'), '# packs');
+  const pub = join(dir, 'pub');
+  const packs = await buildCommunityPacks(src, pub);
+  assert.deepEqual(packs.map((p) => [p.id, p.name, p.author, p.previews.length]), [['cool-pack', 'Cool Pack', 'me', 1], ['zipped-one', 'Zipped One', '', 0]]);
+  // The made tar.gz installs like any other pack (pack.json left out).
+  const files = await readArchive(new Uint8Array(readFileSync(join(pub, packs[0].tar))));
+  const c = packContents(files);
+  assert.equal(c.name, 'Cool Pack');
+  assert.ok(!c.files.some((f) => f.path === 'pack.json'));
+  assert.equal(c.anims.length, 1);
+  const png = readFileSync(join(pub, packs[0].previews[0]));
+  assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  execFileSync('python3', ['-c', 'import zlib,sys,struct\nd=open(sys.argv[1],"rb").read()\nassert d[12:16]==b"IHDR"', join(pub, packs[0].previews[0])]);
+  const z = await readArchive(new Uint8Array(readFileSync(join(pub, packs[1].tar))));
+  assert.deepEqual(z.map((f) => f.path), ['Zipped One/Icons/Passport/face_8x1.bmx']);
+  // GNU tar reads it too
+  assert.match(execFileSync('tar', ['tzf', join(pub, packs[0].tar)], { encoding: 'utf8' }), /Cool Pack\/Anims\/Wave\/frame_0\.bm/);
+});
+
+test('reads an installed pack back from the Flipper', async () => {
+  const { readInstalledPack } = await import('../src/assets/packs.js');
+  const { Flipper } = await import('../src/flipper/api.js');
+  const { FakeFlipper } = await import('../src/flipper/demo.js');
+  const fake = new FakeFlipper();
+  for (const d of ['/ext/asset_packs', '/ext/asset_packs/Mine', '/ext/asset_packs/Mine/Icons', '/ext/asset_packs/Mine/Icons/Passport']) fake.dirs.add(d);
+  fake.files.set('/ext/asset_packs/Mine/Icons/Passport/face_8x1.bmx', new Uint8Array([8, 0, 0, 0, 1, 0, 0, 0, 0, 0xff]));
+  const c = await readInstalledPack(new Flipper(fake), 'Mine');
+  assert.equal(c.name, 'Mine');
+  assert.equal(c.icons.length, 1);
+});

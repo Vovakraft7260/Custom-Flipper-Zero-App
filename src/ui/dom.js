@@ -123,3 +123,23 @@ export function restoreScroll(y) {
   el.addEventListener('touchstart', stop, { once: true, passive: true });
   el.addEventListener('wheel', stop, { once: true, passive: true });
 }
+
+/**
+ * A small "⋯" button that opens a menu. Keeps dangerous actions like remove
+ * one step away instead of a big button. items: [{ label, danger?, run }]
+ */
+export function moreButton(title, items, { corner = true } = {}) {
+  return h(
+    'button',
+    {
+      class: corner ? 'more-btn corner' : 'more-btn',
+      'aria-label': 'more options',
+      onclick: async (e) => {
+        e.stopPropagation();
+        const pick = await sheet(title, items.map((it, i) => ({ label: it.label, class: it.danger ? 'danger' : '', value: String(i) })));
+        if (pick !== null) await items[Number(pick)].run();
+      },
+    },
+    '⋯',
+  );
+}
