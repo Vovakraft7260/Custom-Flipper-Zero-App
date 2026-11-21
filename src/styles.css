@@ -163,3 +163,11 @@ canvas.wave { width: 100%; height: 90px; border: 1px solid var(--line); border-r
 .app-tag.cat { border-style: dashed; }
 .cat-picker { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 8px; max-width: 60%; }
 .queue-banner { margin-bottom: 10px; }
+.pack-card { padding-top: 10px; }
+.pack-thumb { width: 100%; aspect-ratio: 2 / 1; object-fit: contain; image-rendering: pixelated; background: #ff8200; border-radius: 6px; }
+.pack-previews { display: flex; gap: 8px; overflow-x: auto; margin: 10px 0; }
+.pack-previews img { height: 128px; width: auto; image-rendering: pixelated; border-radius: 6px; background: #ff8200; }
+.pixel-canvas { image-rendering: pixelated; border-radius: 4px; max-width: 100%; }
+.pack-item { margin-bottom: 12px; }
+.pack-icons { display: flex; flex-wrap: wrap; gap: 12px; }
+.pack-label { font-size: 11px; overflow-wrap: anywhere; max-width: 260px; }
