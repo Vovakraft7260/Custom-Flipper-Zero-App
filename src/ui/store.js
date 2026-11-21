@@ -111,6 +111,7 @@ function home() {
     {},
     !sdk && h('p', { class: 'tip' }, "Couldn't read your firmware's app version, so some apps may not run."),
     h('div', { class: 'row', style: 'margin-bottom:10px' }, input, h('button', { onclick: doSearch }, '⌕')),
+    queueBanner(),
     h(
       'div',
       { class: 'cards', style: 'margin-bottom:10px' },
@@ -124,7 +125,7 @@ function home() {
       'div',
       { class: 'cards' },
       categories.map((c) =>
-        h('div', { class: 'card-item', role: 'button', onclick: () => go({ type: 'list', categoryId: c.id, title: c.name }) },
+        h('div', { class: 'card-item', role: 'button', onclick: () => go({ type: 'list', categoryId: c.id, title: c.name, fromCategory: true }) },
           h('span', { class: 'card-icon' }, c.icon ? h('img', { src: c.icon, alt: '', class: 'cat-icon' }) : '▦'),
           h('span', { class: 'card-name' }, c.name),
           h('span', { class: 'card-sub muted' }, `${c.count} apps`)),
@@ -134,15 +135,27 @@ function home() {
   );
 }
 
-function appRow(a) {
+function appRow(a, { showCategory = false } = {}) {
   const mine = installedFor(a.id);
   const tag = mine ? (mine.versionUid !== a.versionId ? 'update' : 'installed') : onFlipper.has(a.alias) ? 'on flipper' : '';
+  const cat = showCategory && a.categoryId && categories?.find((c) => c.id === a.categoryId)?.name;
   return h(
     'div',
     { class: 'app-row', role: 'button', onclick: () => go({ type: 'app', id: a.id }) },
     icon(a.icon),
-    h('div', { class: 'app-text' }, h('div', { class: 'app-name' }, a.name, tag && h('span', { class: `app-tag ${tag.replace(' ', '-')}` }, tag)), h('div', { class: 'muted app-short' }, a.short)),
+    h('div', { class: 'app-text' }, h('div', { class: 'app-name' }, a.name, tag && h('span', { class: `app-tag ${tag.replace(' ', '-')}` }, tag), cat && h('span', { class: 'app-tag cat' }, cat)), h('div', { class: 'muted app-short' }, a.short)),
   );
+}
+
+/** Dropdown to show only one category. */
+function categoryPicker(selected, onPick, only) {
+  const sel = h(
+    'select',
+    { class: 'cat-picker', onchange: () => onPick(sel.value) },
+    h('option', { value: '' }, 'all categories'),
+    categories.filter((c) => !only || only.has(c.id)).map((c) => h('option', { value: c.id, selected: c.id === selected }, c.name)),
+  );
+  return sel;
 }
 
 function appList(top) {
@@ -153,7 +166,8 @@ function appList(top) {
   const pages = []; // pages[i] = apps on page i
   const draw = () => {
     const all = pages.flat();
-    list.replaceChildren(...(all.length ? all.map(appRow) : [h('p', { class: 'muted' }, 'no apps found')]));
+    const showCategory = !top.categoryId;
+    list.replaceChildren(...(all.length ? all.map((a) => appRow(a, { showCategory })) : [h('p', { class: 'muted' }, 'no apps found')]));
     more.hidden = (pages[pages.length - 1]?.length ?? 0) < PAGE;
   };
   const load = async (i) => {
@@ -174,7 +188,11 @@ function appList(top) {
   };
   more.onclick = () => load(pages.length);
   load(0);
-  root.append(h('div', { class: 'muted', style: 'margin-bottom:8px' }, top.title), list, more);
+  const picker = categoryPicker(top.categoryId, (id) => {
+    stack[stack.length - 1] = { ...top, categoryId: id || undefined };
+    rerender();
+  });
+  root.append(h('div', { class: 'row', style: 'margin-bottom:8px' }, h('span', { class: 'muted' }, top.title), top.fromCategory ? null : picker), queueBanner(), list, more);
   return root;
 }
 
@@ -192,7 +210,7 @@ function detailsBody(app, redraw) {
   const problem = statusProblem(app.status);
   const status = h('div', { class: 'muted', style: 'min-height:1.4em' }, busy === app.alias ? 'working…' : '');
   const run = async (fn) => {
-    if (busy) return toast('Another app is installing, please wait.');
+    if (busy || updateQueue.running) return toast('Another app is installing, please wait.');
     busy = app.alias;
     redraw();
     try {
@@ -252,59 +270,126 @@ function detailsBody(app, redraw) {
   );
 }
 
+let installedFilter = { categoryId: '', updatesOnly: false };
+let catalogInfo = new Map(); // uid -> catalog app, for installed apps
+
 function installedView() {
-  const root = h('div', {}, h('p', { class: 'muted' }, 'checking for updates…'));
-  const draw = (updates, appsById) => {
+  const root = h('div');
+  const draw = (checking) => {
+    const updates = findUpdates(installed, [...catalogInfo.values()]);
+    if (!checking && updates.length === 0) installedFilter.updatesOnly = false; // nothing left to filter for
+    const updatable = new Set(updates.map((u) => u.manifest.uid));
+    const cats = new Set([...catalogInfo.values()].map((a) => a.categoryId));
+    const shown = installed.filter((m) => {
+      const a = catalogInfo.get(m.uid);
+      if (installedFilter.updatesOnly && !updatable.has(m.uid)) return false;
+      if (installedFilter.categoryId && a?.categoryId !== installedFilter.categoryId) return false;
+      return true;
+    });
+    const toggle = h('button', {
+      class: installedFilter.updatesOnly ? 'primary' : '',
+      onclick: () => {
+        installedFilter = { ...installedFilter, updatesOnly: !installedFilter.updatesOnly };
+        draw(checking);
+      },
+    }, `updates ready (${updates.length})`);
+    const picker = categoryPicker(installedFilter.categoryId, (id) => {
+      installedFilter = { ...installedFilter, categoryId: id };
+      draw(checking);
+    }, cats);
     root.replaceChildren(
-      h('div', { class: 'muted', style: 'margin-bottom:8px' }, `installed from the catalog: ${installed.length}`),
-      updates.length > 0 &&
-        h('button', {
-          class: 'primary',
-          style: 'width:100%;margin-bottom:10px',
-          onclick: () => updateAll(updates, root),
-        }, `⇧ update all (${updates.length})`),
-      installed.length === 0 && h('p', { class: 'muted' }, 'Nothing installed from the catalog yet.'),
-      ...installed.map((m) => {
-        const a = appsById.get(m.uid);
-        return appRow(a ?? { id: m.uid, name: m.fullName, short: m.path, versionId: m.versionUid });
-      }),
+      ...[
+        h('div', { class: 'muted', style: 'margin-bottom:8px' }, `installed from the catalog: ${installed.length}${checking ? ' · checking for updates…' : ''}`),
+        h('div', { class: 'row', style: 'margin-bottom:10px;flex-wrap:wrap' }, toggle, picker),
+        queueBanner(),
+        updates.length > 0 && !updateQueue.running &&
+          h('button', { class: 'primary', style: 'width:100%;margin-bottom:10px', onclick: () => startUpdates(updates) }, `⇧ update all (${updates.length})`),
+        installed.length === 0 && h('p', { class: 'muted' }, 'Nothing installed from the catalog yet.'),
+        installed.length > 0 && shown.length === 0 && h('p', { class: 'muted' }, 'Nothing matches this filter.'),
+        ...shown.map((m) => appRow(catalogInfo.get(m.uid) ?? { id: m.uid, name: m.fullName, short: m.path, versionId: m.versionUid }, { showCategory: true })),
+      ].filter(Boolean),
     );
   };
+  draw(true);
   (async () => {
-    let apps = [];
     try {
       installed = await installedApps(conn.flipper);
-      if (installed.length) apps = await listApps(http, sdk, { ids: installed.map((m) => m.uid), limit: 500 });
+      draw(true);
+      if (installed.length) {
+        await cached(`installed:${sdkKey()}:${installed.map((m) => m.uid).sort().join(',')}`,
+          () => listApps(http, sdk, { ids: installed.map((m) => m.uid), limit: 500 }),
+          (apps) => {
+            catalogInfo = new Map(apps.map((a) => [a.id, a]));
+            draw(true);
+          }, { maxAgeMs: 0 });
+      }
     } catch (e) {
       showError(e);
     }
-    draw(findUpdates(installed, apps), new Map(apps.map((a) => [a.id, a])));
+    if (root.isConnected) draw(false);
   })();
   return root;
 }
 
-async function updateAll(updates, root) {
-  if (busy) return;
-  busy = 'all';
-  const status = h('p', { class: 'muted' });
-  root.prepend(status);
-  let done = 0;
-  for (const { manifest, app } of updates) {
-    if (statusProblem(app.status)) continue;
-    try {
-      const full = await getApp(http, sdk, app.id);
-      await installApp(conn.flipper, sdk, full, categoryName(full.categoryId), {
-        previous: manifest,
-        step: (t) => (status.textContent = `${full.name}: ${t}`),
-      });
-      done++;
-    } catch (e) {
-      showError(e);
+// ---------- updates that keep running while you browse ----------
+
+const updateQueue = { running: false, items: [], index: 0, done: 0, failed: [], text: '' };
+const banners = new Set(); // banner elements currently on screen
+
+function queueBanner() {
+  if (!updateQueue.running) return null;
+  const el = h('div', { class: 'tip queue-banner' });
+  banners.add(el);
+  paintBanners();
+  return el;
+}
+
+function paintBanners() {
+  const q = updateQueue;
+  for (const el of [...banners]) {
+    if (!el.isConnected && el.dataset.painted) {
+      banners.delete(el);
+      continue;
     }
+    el.dataset.painted = '1';
+    el.textContent = `updating ${Math.min(q.index + 1, q.items.length)} of ${q.items.length}: ${q.text}`;
   }
-  busy = null;
-  installed = null;
-  toast(`${done} app${done === 1 ? '' : 's'} updated`);
-  installed = await installedApps(conn.flipper).catch(() => []);
+}
+
+function startUpdates(updates) {
+  if (updateQueue.running) return;
+  Object.assign(updateQueue, { running: true, items: updates, index: 0, done: 0, failed: [], text: 'starting…' });
   rerender();
+  (async () => {
+    for (let i = 0; i < updates.length; i++) {
+      const { manifest, app } = updates[i];
+      updateQueue.index = i;
+      updateQueue.text = app.name;
+      paintBanners();
+      try {
+        if (statusProblem(app.status)) throw new Error(statusProblem(app.status));
+        const full = await getApp(http, sdk, app.id);
+        const m = await installApp(conn.flipper, sdk, full, categoryName(full.categoryId), {
+          previous: manifest,
+          step: (t) => {
+            updateQueue.text = `${full.name}: ${t}`;
+            paintBanners();
+          },
+        });
+        installed = [...installed.filter((x) => x.uid !== m.uid), m];
+        updateQueue.done++;
+      } catch (e) {
+        updateQueue.failed.push(`${app.name} (${e.message})`);
+        if (conn.state !== 'online') break; // Flipper gone: stop
+      }
+    }
+    const { done, failed } = updateQueue;
+    updateQueue.running = false;
+    banners.clear();
+    toast(
+      `${done} app${done === 1 ? '' : 's'} updated${failed.length ? `. Not updated: ${failed.join(', ')}` : ''}`,
+      { error: failed.length > 0, ms: failed.length ? 8000 : 3500 },
+    );
+    rerender();
+  })();
 }
