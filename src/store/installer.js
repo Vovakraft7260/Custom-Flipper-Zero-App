@@ -1,5 +1,6 @@
 // Installs, updates and removes catalog apps on the Flipper (like the official app).
 import { RpcError } from '../flipper/rpc.js';
+import { readCached } from '../flipper/mirror.js';
 import { http as defaultHttp, bytesToBase64 } from './http.js';
 import { downloadFap, appPath, manifestPath, buildManifest, parseManifest, MANIFEST_DIR, TMP_DIR } from './catalog.js';
 
@@ -54,7 +55,7 @@ export async function installedApps(f) {
   for (const e of entries) {
     if (e.isDir || !e.name.toLowerCase().endsWith('.fim')) continue;
     try {
-      const m = parseManifest(new TextDecoder().decode(await f.read(`${MANIFEST_DIR}/${e.name}`)), e.name);
+      const m = parseManifest(new TextDecoder().decode(await readCached(f, `${MANIFEST_DIR}/${e.name}`, e.size)), e.name);
       if (m) out.push(m);
     } catch {
       /* unreadable manifest: skip it */

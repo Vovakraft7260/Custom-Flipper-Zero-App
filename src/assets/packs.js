@@ -4,6 +4,7 @@ import { decodeBm, decodeBmx, sizeFromName } from './bm.js';
 import { parseFields } from '../flipper/flipperformat.js';
 import { RpcError } from '../flipper/rpc.js';
 import { scanFiles } from '../backup/backup.js';
+import { readCached } from '../flipper/mirror.js';
 
 export const PACKS_URL = 'https://raw.githubusercontent.com/Vovakraft7260/Custom-Flipper-Zero-App/library-index/packs.json';
 export const PACKS_DIR = '/ext/asset_packs';
@@ -146,7 +147,23 @@ export async function readInstalledPack(f, name, { step = () => {} } = {}) {
   const files = [];
   for (const [i, x] of list.entries()) {
     step(`reading from flipper… ${i + 1} of ${list.length} files`);
-    files.push({ path: `${name}/${x.path.slice(base.length + 1)}`, data: await f.read(x.path) });
+    files.push({ path: `${name}/${x.path.slice(base.length + 1)}`, data: await readCached(f, x.path, x.size) });
   }
   return packContents(files);
+}
+
+/** First frame of a pack's first animation (for a small picture), read cheaply. */
+export async function packThumbFrame(f, name) {
+  const base = `${PACKS_DIR}/${name}/Anims`;
+  const dirs = (await f.list(base)).filter((e) => e.isDir);
+  for (const d of dirs.slice(0, 3)) {
+    const files = await f.list(`${base}/${d.name}`);
+    const meta = files.find((e) => e.name === 'meta.txt');
+    const frame = files.find((e) => e.name === 'frame_0.bm');
+    if (!meta || !frame) continue;
+    const m = parseFields(new TextDecoder().decode(await readCached(f, `${base}/${d.name}/meta.txt`, meta.size)));
+    const data = await readCached(f, `${base}/${d.name}/frame_0.bm`, frame.size);
+    return decodeBm(data, Number(m.Width) || 128, Number(m.Height) || 64);
+  }
+  return null;
 }

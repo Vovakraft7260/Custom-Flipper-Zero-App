@@ -121,3 +121,14 @@ test('reads an installed pack back from the Flipper', async () => {
   assert.equal(c.name, 'Mine');
   assert.equal(c.icons.length, 1);
 });
+
+test('the phone copy is reused until the file size changes', async () => {
+  const { readCached } = await import('../src/flipper/mirror.js');
+  let reads = 0;
+  const f = { read: async () => (reads++, new Uint8Array(reads)) };
+  assert.equal((await readCached(f, '/ext/x', null)).length, 1);
+  assert.equal((await readCached(f, '/ext/x', 1)).length, 1);
+  assert.equal(reads, 1);
+  assert.equal((await readCached(f, '/ext/x', 5)).length, 2); // size changed: read again
+  assert.equal(reads, 2);
+});
