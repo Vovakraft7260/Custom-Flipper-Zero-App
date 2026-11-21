@@ -46,24 +46,45 @@ export function toAppShort(a) {
   };
 }
 
+let listMode = 0; // which request style the catalog accepted last time
+
 /** Apps list. opts: { categoryId, search, offset, limit, sort ('updated_at'|'created_at'|'name'), ids } */
 export async function listApps(http, sdk, opts = {}) {
   const sort = opts.sort ?? 'updated_at';
-  const body = {
-    limit: opts.limit ?? 50,
+  const base = {
+    limit: Math.min(opts.limit ?? 50, 500),
     offset: opts.offset ?? 0,
     query: opts.search || undefined,
     category_id: opts.categoryId || undefined,
     sort_by: sort,
     sort_order: sort === 'name' ? 1 : -1,
     applications: opts.ids,
-    target: sdk?.target,
-    api: sdk?.api,
     is_latest_release_version: true,
   };
-  for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
-  const list = await http.json(`${CATALOG}/v0/1/application`, { method: 'POST', body });
-  return list.map(toAppShort);
+  const withSdk = { ...base, target: sdk?.target, api: sdk?.api };
+  const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
+  // The catalog has changed its request format before, so try the known styles in order
+  // and remember the one that works.
+  const styles = [
+    () => http.json(`${CATALOG}/v0/1/application`, { method: 'POST', body: clean(withSdk) }),
+    () => http.json(`${CATALOG}/v0/1/application`, { method: 'POST', body: clean(base) }),
+    () => http.json(`${CATALOG}/v0/0/application${query({ ...clean(withSdk), applications: opts.ids?.join(',') })}`),
+    () => http.json(`${CATALOG}/v0/0/application${query({ ...clean(base), applications: opts.ids?.join(',') })}`),
+  ];
+  let firstError;
+  for (let i = 0; i < styles.length; i++) {
+    const mode = (listMode + i) % styles.length;
+    try {
+      const list = await styles[mode]();
+      if (!Array.isArray(list)) throw new Error('Unexpected answer from the catalog.');
+      listMode = mode;
+      return list.map(toAppShort);
+    } catch (e) {
+      firstError ??= e;
+      if (e.status && e.status >= 500) break; // server trouble: retrying other styles won't help
+    }
+  }
+  throw firstError;
 }
 
 export async function getApp(http, sdk, id) {

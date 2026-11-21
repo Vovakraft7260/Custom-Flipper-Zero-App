@@ -28,11 +28,12 @@ function httpError(status, data) {
   let detail = '';
   try {
     const d = typeof data === 'string' ? JSON.parse(data) : data;
-    detail = d?.detail?.description || d?.detail || '';
+    const raw = d?.detail ?? d?.message ?? d;
+    detail = typeof raw === 'string' ? raw : JSON.stringify(raw);
   } catch {
-    /* not JSON */
+    detail = typeof data === 'string' ? data : '';
   }
-  const e = new Error(`Server answered ${status}${detail && typeof detail === 'string' ? `: ${detail}` : ''}`);
+  const e = new Error(`Server answered ${status}${detail ? `: ${String(detail).slice(0, 200)}` : ''}`);
   e.status = status;
   return e;
 }
