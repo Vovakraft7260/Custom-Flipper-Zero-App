@@ -4,7 +4,7 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
 
 > Not affiliated with Flipper Devices. "Flipper Zero" is their trademark.
 
-## What it does (v0.7)
+## What it does (v0.8)
 
 - **Connect:** scan, pair and connect over Bluetooth. Already-paired Flippers show up right away.
 - **Device info:** name, firmware (official, Momentum, ...), hardware, battery, SD and internal storage.
@@ -20,6 +20,7 @@ An offline Android control app for the Flipper Zero. It connects over Bluetooth 
   - **NFC / RFID / iButton:** card details (type, UID, data) and an emulate on/off button.
   - Sending works the way the official app does it: the Flipper app opens in RPC mode, loads the file and "presses" its button.
 - **Universal TV remote (Tools tab):** a full remote for 105 TV brands: power, source, mute, D-pad with OK, back, home, menu, exit, info, guide, volume, channel, numbers, media and color keys, and app buttons. Several code sets per brand, a **save to Flipper** button (keeps the remote in Infrared so it works without the phone), and a "find my brand" scan for unknown TVs. The codes are bundled from [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) (CC0), so it works offline.
+- **App store (Tools tab):** browse the official Flipper app catalog by category or search, see screenshots and descriptions, and install, update or remove apps. Builds are picked for your firmware's app API, so they match Momentum or official firmware. Installs use the same manifest files as the official app (`/ext/apps_manifests`), so each app sees the other's installs. There's also an **update all** button.
 - **Signal library (Tools tab):** browse and search about 21,000 community files: IR remotes ([Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB)), Sub-GHz, NFC and Bad USB ([UberGuidoZ](https://github.com/UberGuidoZ/Flipper)), Amiibo ([FlipperAmiibo](https://github.com/Gioman101/FlipperAmiibo)) and [Jakoby's Bad USB payloads](https://github.com/I-Am-Jakoby/Flipper-Zero-BadUSB). You can preview a file and send it to `/ext/<type>/library/` with one tap, then open it right away. Browsing works without the Flipper. The file list and every file you've opened are kept on the phone, so they still work offline. The list is rebuilt weekly by the *Library index* workflow (sources: `scripts/library-sources.json`).
 - **Remote:** live Flipper screen in an orange frame, with the D-pad, OK and Back buttons. Tap for a press, hold for a long press. Pressed buttons appear in a queue and are sent in order.
 - **Quick launch:** you pick which apps appear (built-in apps, installed `.fap` apps, or any name).
